@@ -1,1 +1,1 @@
-="Article from "&MID(C2,FIND("-",C2)+2,FIND("-",C2,FIND("-",C2)+1)-FIND("-",C2)-2)&" on "&TEXT(DATE(LEFT(MID(C2,FIND("\",C2)+1,6),4),MID(MID(C2,FIND("\",C2)+1,6),5,2),MID(MID(C2,FIND("\",C2)+1,6),7,2)),"yyyy-mm-dd")&" about "&RIGHT(C2,LEN(C2)-FIND("-",C2,FIND("-",C2)+1)-2)
+="Article from "&MID(C2,FIND(" - ",C2)+3,FIND(" - ",C2,FIND(" - ",C2)+1)-FIND(" - ",C2)-3)&" on "&TEXT(DATE(MID(C2,FIND("\",C2,FIND("\",C2)+1)+1,4),MID(C2,FIND("\",C2,FIND("\",C2)+1)+5,2),MID(C2,FIND("\",C2,FIND("\",C2)+1)+7,2)),"yyyy-mm-dd")&" about "&RIGHT(C2,LEN(C2)-FIND(" - ",C2,FIND(" - ",C2)+1)-3)
