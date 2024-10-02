@@ -1,1 +1,4 @@
 ="Article from "&MID(A18576,FIND(" - ",A18576)+3,FIND(" - ",A18576,FIND(" - ",A18576)+1)-FIND(" - ",A18576)-3)&" on "&TEXT(DATE(LEFT(A18576,4),MID(A18576,5,2),MID(A18576,7,2)),"yyyy-mm-dd")&" about "&LEFT(RIGHT(A18576,LEN(A18576)-FIND(" - ",A18576,FIND(" - ",A18576)+1)-3),LEN(RIGHT(A18576,LEN(A18576)-FIND(" - ",A18576,FIND(" - ",A18576)+1)-3))-4)
+
+
+="Email: " & MID(A1, FIND("RE ", A1) + 3, LEN(A1) - FIND("RE ", A1) - 6)
