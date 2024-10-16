@@ -1,35 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import Plot from 'react-plotly.js';
+
+// Memoized Input Component to avoid re-renders when not necessary
+const DateInput: React.FC<{
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}> = React.memo(({ label, value, onChange }) => {
+  console.log(`${label} rendered`); // for debugging
+
+  return (
+    <div>
+      <label>{label}</label>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+});
 
 const MultiPlotZoom: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [xRange, setXRange] = useState<[string, string] | undefined>(undefined);
 
-  const zoomCharts = () => {
+  // Memoize the xRange calculation based on the startDate and endDate
+  const xRange = useMemo<[string, string] | undefined>(() => {
     if (!startDate || !endDate) {
-      alert('Please enter valid dates.');
-      return;
+      return undefined; // No zoom range if dates are invalid
     }
-    setXRange([startDate, endDate]); // Set the new range for the charts
-  };
+    return [startDate, endDate];
+  }, [startDate, endDate]);
+
+  // Memoize input handlers to avoid re-creating them on each render
+  const handleStartDateChange = useCallback((date: string) => {
+    setStartDate(date);
+  }, []);
+
+  const handleEndDateChange = useCallback((date: string) => {
+    setEndDate(date);
+  }, []);
 
   return (
     <div>
       <div>
-        <label>Start Date:</label>
-        <input
-          type="date"
+        <DateInput
+          label="Start Date:"
           value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
+          onChange={handleStartDateChange}
         />
-        <label>End Date:</label>
-        <input
-          type="date"
+        <DateInput
+          label="End Date:"
           value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
+          onChange={handleEndDateChange}
         />
-        <button onClick={zoomCharts}>Zoom</button>
+        <button onClick={() => setStartDate(startDate) && setEndDate(endDate)}>
+          Zoom
+        </button>
       </div>
       
       {/* Chart 1 */}
