@@ -1,60 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import Plotly from 'plotly.js-dist';
+import React, { useState } from 'react';
+import Plot from 'react-plotly.js';
 
 const MultiPlotZoom: React.FC = () => {
-  const chartIds = ['chart1', 'chart2', 'chart3']; // Add all your chart IDs here
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
-  const createCharts = () => {
-    const data1 = [{
-      x: ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01'],
-      y: [10, 15, 13, 17],
-      type: 'scatter',
-      mode: 'lines+markers',
-      marker: { color: 'red' },
-    }];
-    const data2 = [{
-      x: ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01'],
-      y: [16, 5, 11, 9],
-      type: 'scatter',
-      mode: 'lines+markers',
-      marker: { color: 'blue' },
-    }];
-    const data3 = [{
-      x: ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01'],
-      y: [12, 9, 15, 12],
-      type: 'scatter',
-      mode: 'lines+markers',
-      marker: { color: 'green' },
-    }];
-
-    Plotly.newPlot('chart1', data1);
-    Plotly.newPlot('chart2', data2);
-    Plotly.newPlot('chart3', data3);
-  };
-
-  useEffect(() => {
-    createCharts();
-  }, []);
+  const [xRange, setXRange] = useState<[string, string] | undefined>(undefined);
 
   const zoomCharts = () => {
-    const start = new Date(startDate).getTime();
-    const end = new Date(endDate).getTime();
-
-    if (isNaN(start) || isNaN(end)) {
+    if (!startDate || !endDate) {
       alert('Please enter valid dates.');
       return;
     }
-
-    chartIds.forEach((chartId) => {
-      const chartElement = document.getElementById(chartId);
-      if (chartElement) {
-        Plotly.relayout(chartElement, {
-          'xaxis.range': [start, end],
-        });
-      }
-    });
+    setXRange([startDate, endDate]); // Set the new range for the charts
   };
 
   return (
@@ -74,9 +31,63 @@ const MultiPlotZoom: React.FC = () => {
         />
         <button onClick={zoomCharts}>Zoom</button>
       </div>
-      <div id="chart1" style={{ width: '320px', height: '240px' }}></div>
-      <div id="chart2" style={{ width: '320px', height: '240px' }}></div>
-      <div id="chart3" style={{ width: '320px', height: '240px' }}></div>
+      
+      {/* Chart 1 */}
+      <Plot
+        data={[
+          {
+            x: ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01'],
+            y: [10, 15, 13, 17],
+            type: 'scatter',
+            mode: 'lines+markers',
+            marker: { color: 'red' },
+          },
+        ]}
+        layout={{
+          width: 320,
+          height: 240,
+          title: 'Chart 1',
+          xaxis: xRange ? { range: xRange } : undefined, // Apply the x-axis range based on zoom
+        }}
+      />
+
+      {/* Chart 2 */}
+      <Plot
+        data={[
+          {
+            x: ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01'],
+            y: [16, 5, 11, 9],
+            type: 'scatter',
+            mode: 'lines+markers',
+            marker: { color: 'blue' },
+          },
+        ]}
+        layout={{
+          width: 320,
+          height: 240,
+          title: 'Chart 2',
+          xaxis: xRange ? { range: xRange } : undefined, // Apply the x-axis range based on zoom
+        }}
+      />
+
+      {/* Chart 3 */}
+      <Plot
+        data={[
+          {
+            x: ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01'],
+            y: [12, 9, 15, 12],
+            type: 'scatter',
+            mode: 'lines+markers',
+            marker: { color: 'green' },
+          },
+        ]}
+        layout={{
+          width: 320,
+          height: 240,
+          title: 'Chart 3',
+          xaxis: xRange ? { range: xRange } : undefined, // Apply the x-axis range based on zoom
+        }}
+      />
     </div>
   );
 };
