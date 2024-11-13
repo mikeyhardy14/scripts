@@ -1,0 +1,33 @@
+import React, { useState, useEffect } from 'react';
+import { SPHttpClient } from '@microsoft/sp-http';
+
+const Timeline = ({ spHttpClient, siteUrl }) => {
+  const [events, setEvents] = useState([]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      const response = await spHttpClient.get(
+        `${siteUrl}/_api/web/lists/getbytitle('Timeline')/items`,
+        SPHttpClient.configurations.v1
+      );
+      const data = await response.json();
+      setEvents(data.value);
+    };
+
+    fetchEvents();
+  }, []);
+
+  return (
+    <div className="timeline">
+      {events.map(event => (
+        <div key={event.Id} className="timeline-event">
+          <h3>{event.Title}</h3>
+          <p>{event.StartDate} - {event.EndDate}</p>
+          <button onClick={() => alert(event.Details)}>Details</button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default Timeline;
