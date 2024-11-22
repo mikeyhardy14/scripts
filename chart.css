@@ -1,0 +1,63 @@
+/* Container for the zoom section */
+.zoom-container {
+  font-family: 'Arial', sans-serif;
+  margin: 20px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Wrapper for the date range section */
+.date-range-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+/* Wrapper for individual date input */
+.date-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Label styling */
+.date-label {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 5px;
+}
+
+/* Modern date input styling */
+.modern-date-input {
+  width: 200px;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+  background-color: #fff;
+  transition: border-color 0.3s ease;
+}
+
+.modern-date-input:focus {
+  border-color: #0078d7;
+  outline: none;
+}
+
+/* Zoom button styling */
+.modern-zoom-button {
+  padding: 10px 20px;
+  font-size: 14px;
+  color: white;
+  background-color: #0078d7;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.modern-zoom-button:hover {
+  background-color: #005bb5;
+}
