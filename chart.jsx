@@ -1,24 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import Plot from 'react-plotly.js';
-import './MultiPlotZoom.css'; // Import custom styles
-
-const DateInput: React.FC<{
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}> = React.memo(({ label, value, onChange }) => {
-  return (
-    <div className="date-input-wrapper">
-      <label className="date-label">{label}</label>
-      <input
-        className="modern-date-input"
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
-});
+import './MultiPlotZoom.css';
 
 const MultiPlotZoom: React.FC = () => {
   const [startDate, setStartDate] = useState('');
@@ -42,39 +24,42 @@ const MultiPlotZoom: React.FC = () => {
   return (
     <div className="zoom-container">
       <div className="date-range-wrapper">
-        <DateInput
-          label="Start Date:"
+        <input
+          type="date"
+          className="modern-date-input"
           value={startDate}
-          onChange={handleStartDateChange}
+          onChange={(e) => handleStartDateChange(e.target.value)}
         />
-        <DateInput
-          label="End Date:"
+        <input
+          type="date"
+          className="modern-date-input"
           value={endDate}
-          onChange={handleEndDateChange}
+          onChange={(e) => handleEndDateChange(e.target.value)}
         />
-        <button className="modern-zoom-button" onClick={() => {}}>
-          Zoom
-        </button>
+        <button className="modern-button">Apply Date Range</button>
+        <button className="modern-button">Toggle Mod View</button>
+        <button className="modern-button">Toggle Error Bounds</button>
+        <button className="modern-button">Clear Deploy</button>
       </div>
-      
-      {/* Chart Components */}
-      <Plot
-        data={[
-          {
-            x: ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01'],
-            y: [10, 15, 13, 17],
-            type: 'scatter',
-            mode: 'lines+markers',
-            marker: { color: 'red' },
-          },
-        ]}
-        layout={{
-          width: 320,
-          height: 240,
-          title: 'Chart 1',
-          xaxis: xRange ? { range: xRange } : undefined,
-        }}
-      />
+      <div className="chart-wrapper">
+        <Plot
+          data={[
+            {
+              x: ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01'],
+              y: [10, 15, 13, 17],
+              type: 'scatter',
+              mode: 'lines+markers',
+              marker: { color: 'red' },
+            },
+          ]}
+          layout={{
+            width: 600,
+            height: 400,
+            title: 'Chart',
+            xaxis: xRange ? { range: xRange } : undefined,
+          }}
+        />
+      </div>
     </div>
   );
 };
