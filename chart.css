@@ -8,15 +8,28 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Wrapper for date inputs and buttons */
-.date-range-wrapper {
+/* Wrapper for Add Row button */
+.filter-wrapper {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}
+
+/* Row wrapper */
+.row-wrapper {
+  margin-bottom: 20px;
+}
+
+/* Input row styling */
+.input-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px; /* Reduce space between inputs and charts */
+  margin-bottom: 10px;
 }
 
-/* Modern date input styling */
+/* Modern text input styling */
+.modern-text-input,
 .modern-date-input {
   width: 150px;
   padding: 8px 12px;
@@ -27,6 +40,7 @@
   transition: border-color 0.3s ease;
 }
 
+.modern-text-input:focus,
 .modern-date-input:focus {
   border-color: #0078d7;
   outline: none;
@@ -49,17 +63,20 @@
   color: white;
 }
 
-/* Wrapper for the chart */
-.chart-wrapper {
-  margin-top: 10px; /* Reduced space above the chart */
-  display: flex;
-  justify-content: center;
-  align-items: center;
+/* Remove button styling */
+.remove-button {
+  background-color: #d9534f;
+  border-color: #d9534f;
+  color: white;
 }
 
-/* Reduced white space around the chart */
-.chart-wrapper .plotly {
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 100%;
+.remove-button:hover {
+  background-color: #c9302c;
+}
+
+/* Chart wrapper */
+.chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
