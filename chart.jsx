@@ -57,6 +57,10 @@ const MultiPlotZoom: React.FC = () => {
             height: 400,
             title: 'Chart',
             xaxis: xRange ? { range: xRange } : undefined,
+            margin: { l: 30, r: 10, t: 30, b: 30 }, // Reduced margins
+          }}
+          config={{
+            displayModeBar: false, // Hides the Plotly toolbar
           }}
         />
       </div>
