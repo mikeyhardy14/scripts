@@ -8,75 +8,33 @@
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Wrapper for Add Row button */
-.filter-wrapper {
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 10px;
-}
-
-/* Row wrapper */
-.row-wrapper {
+/* Controls section */
+.controls {
   margin-bottom: 20px;
-}
-
-/* Input row styling */
-.input-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
 }
 
-/* Modern text input styling */
-.modern-text-input,
-.modern-date-input {
-  width: 150px;
+/* Dropdown styling */
+.modern-select {
   padding: 8px 12px;
+  font-size: 14px;
   border: 1px solid #ccc;
   border-radius: 5px;
-  font-size: 14px;
-  background-color: #fff;
-  transition: border-color 0.3s ease;
-}
-
-.modern-text-input:focus,
-.modern-date-input:focus {
-  border-color: #0078d7;
-  outline: none;
-}
-
-/* Button styling */
-.modern-button {
-  padding: 8px 16px;
-  font-size: 14px;
-  color: #0078d7;
   background-color: white;
-  border: 1px solid #0078d7;
-  border-radius: 5px;
   cursor: pointer;
-  transition: all 0.3s ease;
 }
 
-.modern-button:hover {
-  background-color: #0078d7;
-  color: white;
-}
-
-/* Remove button styling */
-.remove-button {
-  background-color: #d9534f;
-  border-color: #d9534f;
-  color: white;
-}
-
-.remove-button:hover {
-  background-color: #c9302c;
-}
-
-/* Chart wrapper */
-.chart-wrapper {
-  display: flex;
-  flex-direction: column;
+/* Chart grid layout */
+.chart-grid {
+  display: grid;
   gap: 20px;
+  justify-items: center;
+}
+
+/* Chart item styling */
+.chart-item {
+  width: 100%;
+  max-width: 400px; /* Optional: limit chart width */
 }
