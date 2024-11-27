@@ -1,3 +1,9 @@
-Following our recent discussion, I understand that Sean will be assisting with the SharePoint development effort. This collaboration will allow me to focus on organizing the directory structure while Sean takes the lead on the SharePoint site.
+Hi Sean,
 
-To ensure a smooth transition, I’d like to bring Sean up to speed on the current state of development. As I haven’t had the pleasure of working with Sean before, could you facilitate an introduction? Additionally, do you know when Sean would be available to begin contributing to the project?
+I hope this email finds you well. My name is Michael Hardy, and I’m currently working on the SharePoint site for the Aukus effort. From my understanding, you are being onboarded to assist with this project.
+
+I’d love the opportunity to connect with you over Teams to bring you up to speed. Please let me know a time that works best for you.
+
+Looking forward to working with you!
+
+Best regards,
