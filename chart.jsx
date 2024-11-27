@@ -1,113 +1,69 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState } from 'react';
 import Plot from 'react-plotly.js';
 import './MultiPlotZoom.css';
 
-interface ChartRow {
-  id: number;
-  startDate: string;
-  endDate: string;
-  label: string;
-}
-
 const MultiPlotZoom: React.FC = () => {
-  const [rows, setRows] = useState<ChartRow[]>([]);
-  const [nextId, setNextId] = useState(1);
+  const [chartsPerRow, setChartsPerRow] = useState(3); // Default to 3 charts per row
 
-  // Add a new row input
-  const addRow = () => {
-    setRows([...rows, { id: nextId, startDate: '', endDate: '', label: '' }]);
-    setNextId(nextId + 1);
+  const chartData = Array.from({ length: 10 }, (_, index) => ({
+    id: index + 1,
+    label: `Chart ${index + 1}`,
+    data: {
+      x: ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01'],
+      y: [10 + index, 15 + index, 13 + index, 17 + index],
+    },
+  }));
+
+  const handleChartsPerRowChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setChartsPerRow(parseInt(e.target.value, 10));
   };
-
-  // Update a row's data
-  const updateRow = (id: number, field: keyof ChartRow, value: string) => {
-    setRows(
-      rows.map((row) => (row.id === id ? { ...row, [field]: value } : row))
-    );
-  };
-
-  // Remove a row
-  const removeRow = (id: number) => {
-    setRows(rows.filter((row) => row.id !== id));
-  };
-
-  // Generate xRange for a specific row
-  const getXRange = useMemo(() => {
-    return (startDate: string, endDate: string): [string, string] | undefined => {
-      if (!startDate || !endDate) {
-        return undefined;
-      }
-      return [startDate, endDate];
-    };
-  }, []);
 
   return (
     <div className="zoom-container">
-      <div className="filter-wrapper">
-        <button className="modern-button" onClick={addRow}>
-          Add Row
-        </button>
+      {/* Controls */}
+      <div className="controls">
+        <label htmlFor="charts-per-row">Charts per row: </label>
+        <select
+          id="charts-per-row"
+          value={chartsPerRow}
+          onChange={handleChartsPerRowChange}
+          className="modern-select"
+        >
+          {[1, 2, 3, 4, 5].map((num) => (
+            <option key={num} value={num}>
+              {num}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Input Rows */}
-      <div className="row-wrapper">
-        {rows.map((row) => (
-          <div key={row.id} className="input-row">
-            <input
-              type="date"
-              className="modern-date-input"
-              value={row.startDate}
-              onChange={(e) =>
-                updateRow(row.id, 'startDate', e.target.value)
-              }
-              placeholder="Start Date"
+      {/* Chart Grid */}
+      <div
+        className="chart-grid"
+        style={{
+          gridTemplateColumns: `repeat(${chartsPerRow}, 1fr)`,
+        }}
+      >
+        {chartData.map((chart) => (
+          <div key={chart.id} className="chart-item">
+            <Plot
+              data={[
+                {
+                  x: chart.data.x,
+                  y: chart.data.y,
+                  type: 'scatter',
+                  mode: 'lines+markers',
+                  marker: { color: 'red' },
+                },
+              ]}
+              layout={{
+                title: chart.label,
+                width: undefined,
+                height: undefined,
+                margin: { l: 30, r: 10, t: 30, b: 30 },
+              }}
             />
-            <input
-              type="date"
-              className="modern-date-input"
-              value={row.endDate}
-              onChange={(e) => updateRow(row.id, 'endDate', e.target.value)}
-              placeholder="End Date"
-            />
-            <input
-              type="text"
-              className="modern-text-input"
-              value={row.label}
-              onChange={(e) => updateRow(row.id, 'label', e.target.value)}
-              placeholder="Label"
-            />
-            <button
-              className="modern-button remove-button"
-              onClick={() => removeRow(row.id)}
-            >
-              Remove
-            </button>
           </div>
-        ))}
-      </div>
-
-      {/* Generated Charts */}
-      <div className="chart-wrapper">
-        {rows.map((row) => (
-          <Plot
-            key={row.id}
-            data={[
-              {
-                x: ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01'],
-                y: [10, 15, 13, 17],
-                type: 'scatter',
-                mode: 'lines+markers',
-                marker: { color: 'red' },
-              },
-            ]}
-            layout={{
-              width: 600,
-              height: 400,
-              title: row.label || `Chart ${row.id}`,
-              xaxis: row.startDate && row.endDate ? { range: getXRange(row.startDate, row.endDate) } : undefined,
-              margin: { l: 30, r: 10, t: 30, b: 30 },
-            }}
-          />
         ))}
       </div>
     </div>
