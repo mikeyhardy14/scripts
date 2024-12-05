@@ -1,0 +1,47 @@
+/* ChartPage.css */
+
+/* Main container for the page */
+.chart-page {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+/* Filter section at the top */
+.filter-section {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-section label {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.filter-section select {
+  padding: 5px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+/* Grid container for the charts */
+.charts-grid {
+  display: grid;
+  gap: 20px;
+}
+
+/* Individual chart container */
+.chart-container {
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: #f9f9f9;
+  transition: transform 0.2s ease;
+}
+
+.chart-container:hover {
+  transform: scale(1.02);
+}
