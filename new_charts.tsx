@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Plot from 'react-plotly.js';
+import './ChartPage.css'; // Import the CSS file
 
 const ChartPage: React.FC = () => {
   const [chartsPerRow, setChartsPerRow] = useState(3); // Default: 3 charts per row
@@ -19,9 +20,9 @@ const ChartPage: React.FC = () => {
   }));
 
   return (
-    <div>
+    <div className="chart-page">
       {/* Filter Section */}
-      <div style={{ marginBottom: '20px' }}>
+      <div className="filter-section">
         <label htmlFor="chartsPerRow">Charts per row: </label>
         <select
           id="chartsPerRow"
@@ -36,14 +37,13 @@ const ChartPage: React.FC = () => {
 
       {/* Charts Grid */}
       <div
+        className="charts-grid"
         style={{
-          display: 'grid',
           gridTemplateColumns: `repeat(${chartsPerRow}, 1fr)`,
-          gap: '20px',
         }}
       >
         {chartData.map((chart, index) => (
-          <div key={index} style={{ border: '1px solid #ccc', padding: '10px' }}>
+          <div key={index} className="chart-container">
             <Plot data={chart.data} layout={chart.layout} />
           </div>
         ))}
