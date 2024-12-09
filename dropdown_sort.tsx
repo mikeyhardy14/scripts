@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import styles from './OptionsSelector.module.css'; // Custom styles for the component
+import './DropdownSort.css'; // Import the external CSS file
 
 interface Option {
   id: string | number;
@@ -7,44 +7,30 @@ interface Option {
   value: string | number;
 }
 
-interface OptionsSelectorProps {
+interface DropdownSortProps {
   options: Option[];
   onSelect: (value: string | number) => void;
-  multiple?: boolean; // Allows multiple selection if true
-  defaultSelected?: string | number | string[] | number[];
+  defaultSelected?: string | number;
 }
 
-const OptionsSelector: React.FC<OptionsSelectorProps> = ({ 
+const DropdownSort: React.FC<DropdownSortProps> = ({ 
   options, 
   onSelect, 
-  multiple = false, 
   defaultSelected 
 }) => {
-  const [selectedOptions, setSelectedOptions] = useState<string[] | number[]>(
-    Array.isArray(defaultSelected) ? defaultSelected : defaultSelected ? [defaultSelected] : []
-  );
+  const [selectedOption, setSelectedOption] = useState<string | number | null>(defaultSelected || null);
 
   const handleOptionClick = (value: string | number) => {
-    if (multiple) {
-      setSelectedOptions((prev) => 
-        prev.includes(value) 
-          ? prev.filter((option) => option !== value) 
-          : [...prev, value]
-      );
-    } else {
-      setSelectedOptions([value]);
-    }
+    setSelectedOption(value);
     onSelect(value);
   };
 
-  const isSelected = (value: string | number) => selectedOptions.includes(value);
-
   return (
-    <div className={styles.optionsContainer}>
+    <div className="dropdown-sort-container">
       {options.map((option) => (
         <button 
           key={option.id} 
-          className={`${styles.optionButton} ${isSelected(option.value) ? styles.selected : ''}`} 
+          className={`dropdown-sort-option ${selectedOption === option.value ? 'selected' : ''}`} 
           onClick={() => handleOptionClick(option.value)}
         >
           {option.label}
@@ -54,4 +40,4 @@ const OptionsSelector: React.FC<OptionsSelectorProps> = ({
   );
 };
 
-export default OptionsSelector;
+export default DropdownSort;
