@@ -1,10 +1,12 @@
-.optionsContainer {
+/* Container styles */
+.dropdown-sort-container {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-.optionButton {
+/* Default option button styles */
+.dropdown-sort-option {
   background-color: #f0f0f0;
   border: 1px solid #ddd;
   border-radius: 5px;
@@ -14,11 +16,12 @@
   transition: all 0.2s ease-in-out;
 }
 
-.optionButton:hover {
+.dropdown-sort-option:hover {
   background-color: #e0e0e0;
 }
 
-.optionButton.selected {
+/* Selected option styles */
+.dropdown-sort-option.selected {
   background-color: #0070f3;
   color: white;
   border-color: #0070f3;
