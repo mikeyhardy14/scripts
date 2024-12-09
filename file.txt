@@ -1,9 +1,14 @@
-Hi Sean,
+**Subject:** Question About SharePoint Migration Process  
 
-I hope this email finds you well. My name is Michael Hardy, and I’m currently working on the SharePoint site for the Aukus effort. From my understanding, you are being onboarded to assist with this project.
+Hi Sean,  
 
-I’d love the opportunity to connect with you over Teams to bring you up to speed. Please let me know a time that works best for you.
+I hope you're doing well.  
 
-Looking forward to working with you!
+I have a question regarding the migration to SharePoint. We’re currently in the process of building out the directory and have been gathering feedback from POCs and executives. Based on our conversation on Friday, I understand that you have experience with similar migrations.  
 
-Best regards,
+Once the directory is set up, could you clarify the process for migrating files for each group? Any guidance or best practices you can share would be greatly appreciated.  
+
+Looking forward to your insights.  
+
+Best regards,  
+[Your Name]
