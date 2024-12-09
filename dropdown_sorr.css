@@ -1,28 +1,72 @@
-/* Container styles */
-.dropdown-sort-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+/* Container for the dropdown */
+.dropdown-sort {
+  width: 200px;
+  font-family: Arial, sans-serif;
+  position: relative;
+  user-select: none;
 }
 
-/* Default option button styles */
-.dropdown-sort-option {
-  background-color: #f0f0f0;
+/* Header (selected option and dropdown trigger) */
+.dropdown-sort-header {
+  background-color: #fff;
   border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 10px 20px;
-  font-size: 16px;
+  border-radius: 4px;
+  padding: 10px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.dropdown-sort-option:hover {
-  background-color: #e0e0e0;
+.dropdown-sort-arrow {
+  margin-left: 10px;
+  transition: transform 0.2s ease;
 }
 
-/* Selected option styles */
-.dropdown-sort-option.selected {
-  background-color: #0070f3;
-  color: white;
-  border-color: #0070f3;
+.dropdown-sort-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* List container */
+.dropdown-sort-list {
+  position: absolute;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  border-radius: 4px;
+  margin-top: 5px;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Individual list items */
+.dropdown-sort-item {
+  padding: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-sort-item:hover {
+  background-color: #f9f9f9;
+}
+
+.dropdown-sort-item.selected {
+  background-color: #f0e68c;
+}
+
+/* Scrollbar customization */
+.dropdown-sort-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dropdown-sort-list::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 4px;
+}
+
+.dropdown-sort-list::-webkit-scrollbar-thumb:hover {
+  background-color: #aaa;
 }
