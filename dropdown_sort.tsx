@@ -1,58 +1,30 @@
-import React, { useState } from 'react';
-import './DropdownSort.css';
+import React from 'react';
+import DropdownSort from './DropdownSort';
 
-interface Option {
-  id: string | number;
-  label: string;
-  value: string | number;
-}
+const ParentComponent: React.FC = () => {
+  const options = [
+    { id: 1, label: 'Option 1', value: 'option1' },
+    { id: 2, label: 'Option 2', value: 'option2' },
+    { id: 3, label: 'Option 3', value: 'option3' },
+    { id: 4, label: 'Option 4', value: 'option4' },
+  ];
 
-interface DropdownSortProps {
-  options: Option[];
-  onSelect: (value: string | number) => void;
-  defaultSelected?: string | number;
-}
-
-const DropdownSort: React.FC<DropdownSortProps> = ({ 
-  options, 
-  onSelect, 
-  defaultSelected 
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<string | number | null>(defaultSelected || null);
-
-  const handleOptionClick = (value: string | number) => {
-    setSelectedOption(value);
-    setIsOpen(false);
-    onSelect(value);
+  // Custom function to handle selection
+  const handleSelection = (selectedValue: string | number) => {
+    console.log('Selected option:', selectedValue);
+    // Additional logic specific to your app
   };
 
   return (
-    <div className="dropdown-sort">
-      <div 
-        className="dropdown-sort-header" 
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {selectedOption 
-          ? options.find(option => option.value === selectedOption)?.label 
-          : "Select a Client ..."}
-        <span className={`dropdown-sort-arrow ${isOpen ? 'open' : ''}`}>&#9660;</span>
-      </div>
-      {isOpen && (
-        <ul className="dropdown-sort-list">
-          {options.map((option) => (
-            <li 
-              key={option.id} 
-              className={`dropdown-sort-item ${selectedOption === option.value ? 'selected' : ''}`} 
-              onClick={() => handleOptionClick(option.value)}
-            >
-              {option.label}
-            </li>
-          ))}
-        </ul>
-      )}
+    <div>
+      <h1>Select an Option</h1>
+      <DropdownSort 
+        options={options} 
+        onSelect={handleSelection} 
+        defaultSelected="option2" 
+      />
     </div>
   );
 };
 
-export default DropdownSort;
+export default ParentComponent;
