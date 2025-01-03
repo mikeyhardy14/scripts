@@ -1,0 +1,145 @@
+Option Explicit
+
+Sub GetMultipleSharePointFileAndFolderSizes()
+    Dim sharepointPaths(1 To 4) As String
+    Dim fso As Object
+    Dim wsFile As Worksheet, wsFolder As Worksheet
+    Dim folderRow As Long, fileRow As Long
+    Dim i As Long
+    
+    ' ---- SET YOUR SHAREPOINT PATHS BELOW ----
+    ' Example placeholders — replace with your actual SharePoint mapped paths
+    sharepointPaths(1) = "\\sharepoint.site.url@ssl\DavWWWRoot\sites\yourteamsite\documents\FolderA"
+    sharepointPaths(2) = "\\sharepoint.site.url@ssl\DavWWWRoot\sites\yourteamsite\documents\FolderB"
+    sharepointPaths(3) = "\\sharepoint.site.url@ssl\DavWWWRoot\sites\yourteamsite\documents\FolderC"
+    sharepointPaths(4) = "\\sharepoint.site.url@ssl\DavWWWRoot\sites\yourteamsite\documents\FolderD"
+    ' -----------------------------------------
+
+    ' Create FileSystemObject
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    
+    ' Create two new worksheets for the results:
+    ' 1) File Sizes
+    ' 2) Folder Sizes
+    On Error Resume Next
+    Set wsFile = ThisWorkbook.Worksheets("File Sizes")
+    If Not wsFile Is Nothing Then
+        Application.DisplayAlerts = False
+        wsFile.Delete
+        Application.DisplayAlerts = True
+    End If
+    Set wsFolder = ThisWorkbook.Worksheets("Folder Sizes")
+    If Not wsFolder Is Nothing Then
+        Application.DisplayAlerts = False
+        wsFolder.Delete
+        Application.DisplayAlerts = True
+    End If
+    On Error GoTo 0
+    
+    Set wsFile = ThisWorkbook.Worksheets.Add
+    wsFile.Name = "File Sizes"
+    Set wsFolder = ThisWorkbook.Worksheets.Add
+    wsFolder.Name = "Folder Sizes"
+    
+    ' Initialize headers
+    wsFile.Range("A1:C1").Value = Array("File Name", "File Path", "File Size (Bytes)")
+    wsFolder.Range("A1:C1").Value = Array("Folder Name", "Folder Path", "Total Size (Bytes)")
+    
+    ' Starting rows (leave row 1 for headers)
+    fileRow = 2
+    folderRow = 2
+    
+    ' Loop through each of the four folders
+    For i = 1 To 4
+        Dim currentFolder As Object
+        On Error Resume Next
+        Set currentFolder = fso.GetFolder(sharepointPaths(i))
+        On Error GoTo 0
+        
+        If currentFolder Is Nothing Then
+            MsgBox "Unable to access: " & sharepointPaths(i), vbExclamation
+        Else
+            ' Process folder (recursively adds data to both sheets)
+            ProcessFolder currentFolder, wsFile, wsFolder, fileRow, folderRow
+        End If
+    Next i
+    
+    MsgBox "File and folder sizes have been retrieved successfully!", vbInformation
+End Sub
+
+' ---------------------------------------------------
+' RECURSIVE PROCEDURE TO PROCESS FOLDERS & SUBFOLDERS
+' ---------------------------------------------------
+Private Sub ProcessFolder(ByVal fldr As Object, _
+                          ByRef wsFile As Worksheet, _
+                          ByRef wsFolder As Worksheet, _
+                          ByRef fileRow As Long, _
+                          ByRef folderRow As Long)
+    
+    Dim subFolder As Object
+    Dim fil As Object
+    Dim folderSize As Long
+    folderSize = 0
+    
+    ' 1) Loop through files in the current folder
+    For Each fil In fldr.Files
+        wsFile.Cells(fileRow, 1).Value = fil.Name
+        wsFile.Cells(fileRow, 2).Value = fil.Path
+        wsFile.Cells(fileRow, 3).Value = fil.Size
+        
+        folderSize = folderSize + fil.Size
+        fileRow = fileRow + 1
+    Next fil
+    
+    ' 2) Loop through all subfolders recursively
+    For Each subFolder In fldr.SubFolders
+        ' Recursively process each subfolder
+        folderSize = folderSize + ProcessFolderReturnSize(subFolder, wsFile, wsFolder, fileRow, folderRow)
+    Next subFolder
+    
+    ' 3) After processing the current folder’s files + all subfolders, log the folder size
+    wsFolder.Cells(folderRow, 1).Value = fldr.Name
+    wsFolder.Cells(folderRow, 2).Value = fldr.Path
+    wsFolder.Cells(folderRow, 3).Value = folderSize
+    folderRow = folderRow + 1
+End Sub
+
+' -----------------------------------------------------------------------
+' HELPER FUNCTION: Recursively calculates the size of a folder & subfolders
+'                  returning it so parent calls can accumulate totals.
+' -----------------------------------------------------------------------
+Private Function ProcessFolderReturnSize(ByVal fldr As Object, _
+                                         ByRef wsFile As Worksheet, _
+                                         ByRef wsFolder As Worksheet, _
+                                         ByRef fileRow As Long, _
+                                         ByRef folderRow As Long) As Long
+    
+    Dim subFolder As Object
+    Dim fil As Object
+    Dim folderSize As Long
+    folderSize = 0
+    
+    ' 1) Files in this folder
+    For Each fil In fldr.Files
+        wsFile.Cells(fileRow, 1).Value = fil.Name
+        wsFile.Cells(fileRow, 2).Value = fil.Path
+        wsFile.Cells(fileRow, 3).Value = fil.Size
+        
+        folderSize = folderSize + fil.Size
+        fileRow = fileRow + 1
+    Next fil
+    
+    ' 2) Subfolders
+    For Each subFolder In fldr.SubFolders
+        folderSize = folderSize + ProcessFolderReturnSize(subFolder, wsFile, wsFolder, fileRow, folderRow)
+    Next subFolder
+    
+    ' 3) Record this folder size
+    wsFolder.Cells(folderRow, 1).Value = fldr.Name
+    wsFolder.Cells(folderRow, 2).Value = fldr.Path
+    wsFolder.Cells(folderRow, 3).Value = folderSize
+    folderRow = folderRow + 1
+    
+    ' Return the accumulated folder size to the parent
+    ProcessFolderReturnSize = folderSize
+End Function
