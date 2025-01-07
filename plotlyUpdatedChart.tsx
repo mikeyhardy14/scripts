@@ -1,85 +1,52 @@
 import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js';
-// If you want colorConfig for other reasons, import it. Not strictly needed for the above/below logic.
-// import colorConfig from './colorConfig.json';
+
+// Import color config so each (State,Location) can have its own color
+import colorConfig from './colorConfig.json';
 
 const MultiChart = () => {
   const [charts, setCharts] = useState([]);
-  
-  // Set your "target line" value here
-  const lineValue = 100; // Example: line is at y=100
 
   useEffect(() => {
-    // Replace with your actual endpoint or local file
+    // 1) Fetch your combined JSON. It should have { Group: {...}, Group1: {...} } at the top level.
     fetch('/api/my-data-endpoint')
-      .then((res) => res.json())
-      .then((jsonData) => {
-        /**
-         * JSON shape (example):
-         * {
-         *   "Group": {
-         *     "NameA": {
-         *       "2023-01-01": { "State": { "NY": { "Location": { "New York City": { "Value": 100 }}}}},
-         *       ...
-         *     },
-         *     "NameB": {
-         *       "2023-01-01": { ... },
-         *       ...
-         *     }
-         *   }
-         * }
-         */
+      .then(res => res.json())
+      .then(jsonData => {
         const groupData = jsonData.Group || {};
+        const group1Data = jsonData.Group1 || {};
 
-        // We'll accumulate an array of { name, traces, layout } for each Name
         const newCharts = [];
 
-        // Go through each "Name"
-        Object.keys(groupData).forEach((name) => {
+        // For each "Name" in Group (e.g. NameA, NameB, etc.)
+        Object.keys(groupData).forEach(name => {
           const nameData = groupData[name];
           if (!nameData) return;
 
-          // Build the stacked-area (two-trace) data
-          const { traces, minDate, maxDate } = buildStackedAreaWithLine(nameData, lineValue);
+          // We'll get the matching data from Group1
+          const nameLineData = group1Data[name] || {};
 
-          // Create a layout with a horizontal shape or line at `lineValue`
-          // We'll set x0 = minDate, x1 = maxDate so it spans the entire domain.
-          const layout = {
-            title: `Chart for ${name}`,
-            xaxis: { title: 'Date', type: 'category' }, 
-            // ^ If your dates are real Date objects or you want time-series, switch to type: 'date'
-            yaxis: { title: 'Total' },
-            shapes: [
-              {
-                type: 'line',
-                xref: 'x',  // bind line to x-axis
-                yref: 'y',  // bind line to y-axis
-                x0: minDate,
-                x1: maxDate,
-                y0: lineValue,
-                y1: lineValue,
-                line: {
-                  color: 'black',
-                  width: 2,
-                  dash: 'dash'
-                }
-              }
-            ]
-          };
+          // Build the stacked area traces for all states/locations
+          // plus the "difference" trace (red shortfall) and the black line
+          const { traces, layout } = buildStackWithRedDiffAndLine(
+            name,
+            nameData,
+            nameLineData
+          );
 
-          // Store the chart config
           newCharts.push({ name, traces, layout });
         });
 
         setCharts(newCharts);
       })
-      .catch((err) => console.error('Fetch error:', err));
+      .catch(err => console.error('Fetch error:', err));
   }, []);
 
+  // Render one chart per "Name"
   return (
     <div>
       {charts.map(({ name, traces, layout }) => (
-        <div key={name} style={{ marginBottom: '50px' }}>
+        <div key={name} style={{ marginBottom: '60px' }}>
+          <h2>{name}</h2>
           <Plot data={traces} layout={layout} />
         </div>
       ))}
@@ -90,100 +57,185 @@ const MultiChart = () => {
 export default MultiChart;
 
 /**
- * Parses the nested data for a single "Name," sums up all values at each date,
- * then creates TWO stacked traces:
- *   1) Red area from y=0 up to min(total, lineValue)
- *   2) Blue area from min(total, lineValue) up to total (if total > lineValue)
- *
- * Returns { traces, minDate, maxDate } so the caller can draw a shape or line.
+ * Build traces for a single "Name" so that:
+ * 1) Each (State, Location) is stacked in its own color (from colorConfig).
+ * 2) We fetch the line from nameLineData (Group1). 
+ *    For each date, parse that line value (ex: "20").
+ * 3) If sum of stacks < line, create a red slice for the difference (line - sum).
+ * 4) Draw a dashed black line so we can see the target visually.
  */
-function buildStackedAreaWithLine(nameData, lineValue) {
-  // 1) Collect all date keys
-  const dateKeys = Object.keys(nameData);
+function buildStackWithRedDiffAndLine(name, nameData, nameLineData) {
+  // First, gather all data from Group (the numeric data to be stacked),
+  // grouped by (State, Location). We'll store them in a traceMap.
+  const traceMap = {}; 
+  // e.g. traceMap["NY:New York City"] = { x: [], y: [], ... }
 
-  // 2) For each date, sum up all (State->Location->Value)
-  //    Then store into an array for plotting.
-  const dateArray = [];
-  const totalArray = [];
+  // Also collect a set/list of all date keys
+  const dateSet = new Set();
 
-  dateKeys.forEach((dateStr) => {
-    let dateTotal = 0;
+  // nameData might look like:
+  // { "2024-01-01": { State: { "NY": { Location: { "New York City": { Value: 10 }}}}}, ... }
+  Object.keys(nameData).forEach(dateStr => {
+    dateSet.add(dateStr);
 
     const dateInfo = nameData[dateStr];
-    if (!dateInfo || !dateInfo.State) {
-      dateArray.push(dateStr);
-      totalArray.push(0);
-      return;
-    }
+    if (!dateInfo || !dateInfo.State) return;
 
-    const stateWrapper = dateInfo.State;
-    // stateWrapper might have multiple states, each with multiple locations
-    Object.keys(stateWrapper).forEach((stateKey) => {
-      const locObj = stateWrapper[stateKey].Location || {};
-      Object.keys(locObj).forEach((locKey) => {
-        // e.g. locObj["New York City"] = { "Value": 100 }
-        const { Value } = locObj[locKey] || {};
-        if (Value !== undefined) {
-          dateTotal += Value;
+    // There might be multiple states
+    Object.keys(dateInfo.State).forEach(stateKey => {
+      const locWrapper = dateInfo.State[stateKey].Location || {};
+      Object.keys(locWrapper).forEach(locKey => {
+        const { Value } = locWrapper[locKey] || {};
+        if (Value === undefined) return;
+
+        const comboKey = `${stateKey}:${locKey}`; // e.g. "NY:New York City"
+        if (!traceMap[comboKey]) {
+          // Initialize a trace for this combo
+          const c = colorConfig[comboKey] || colorConfig.default;
+          traceMap[comboKey] = {
+            x: [],
+            y: [],
+            type: 'scatter',
+            mode: 'none',
+            stackgroup: 'one',
+            fill: 'tonexty',
+            fillcolor: c,
+            name: comboKey, // Legend label
+          };
         }
+
+        // We need to make sure x and y line up index-wise.
+        // Typically we just push dateStr onto x, Value onto y.
+        traceMap[comboKey].x.push(dateStr);
+        traceMap[comboKey].y.push(Value);
       });
     });
-
-    dateArray.push(dateStr);
-    totalArray.push(dateTotal);
   });
 
-  // Optionally sort by date if they're real dates
-  // For demonstration, we assume they're in ascending order, 
-  // or they’re strings like "2023-01-01" that are sorted in the JSON.
+  // We’ll now turn each trace’s date order into a sorted sequence so that 
+  // Plotly can plot in ascending x order. 
+  // Also, for any missing date in a trace, you'd need to insert 0 if you want 
+  // a consistent timeseries. However, to keep it simpler, we assume each 
+  // trace has data for each date it actually appears. 
+  //
+  // But let's unify the approach: we build a sorted array of all dates, 
+  // then we re-map each trace onto that full set, inserting 0 if missing.
+  const allDatesSorted = Array.from(dateSet).sort();
+  
+  // For each trace in traceMap, build new arrays that include allDatesSorted,
+  // inserting 0 if the trace had no data for that date.
+  Object.keys(traceMap).forEach(comboKey => {
+    const oldTrace = traceMap[comboKey];
+    const dateValsMap = {}; 
+    // map dateStr -> value
+    oldTrace.x.forEach((d, idx) => {
+      dateValsMap[d] = oldTrace.y[idx];
+    });
 
-  // 3) Build two arrays: belowLineY and aboveLineY
-  //    belowLineY = how much of total is at or below line
-  //    aboveLineY = how much is above line
-  const belowLineY = [];
-  const aboveLineY = [];
+    // Rebuild x,y in sorted date order
+    const newX = [];
+    const newY = [];
+    allDatesSorted.forEach(d => {
+      newX.push(d);
+      newY.push(dateValsMap[d] !== undefined ? dateValsMap[d] : 0);
+    });
 
-  totalArray.forEach((val) => {
-    const below = Math.min(val, lineValue);
-    const above = val > lineValue ? val - lineValue : 0;
-    belowLineY.push(below);
-    aboveLineY.push(above);
+    oldTrace.x = newX;
+    oldTrace.y = newY;
   });
 
-  // 4) We create 2 stacked-area traces:
-  //    a) "Below line" in red, from 0 -> belowLineY
-  //    b) "Above line" in blue, from belowLineY -> belowLineY+aboveLineY
-  //    By using `stackgroup: 'one'`, Plotly will stack them vertically.
-  const traceBelow = {
-    x: dateArray,
-    y: belowLineY,
-    type: 'scatter',
-    mode: 'none',          // no line markers, just the fill
-    stackgroup: 'one',     // both traces in the same stack
-    fill: 'tonexty',       // or 'tozeroy'
-    fillcolor: 'red',
-    name: 'Below/At Line'
-  };
+  // Now let's build a separate array for the line (Group1).
+  // lineValues[i] = line on allDatesSorted[i].
+  const lineValues = allDatesSorted.map(dateStr => {
+    // Look up nameLineData[dateStr]. 
+    // If it's missing, assume line=0 or something
+    let lineVal = 0;
+    const lineDateInfo = nameLineData[dateStr];
+    if (lineDateInfo && lineDateInfo.State) {
+      Object.keys(lineDateInfo.State).forEach(stateKey => {
+        const locWrapper = lineDateInfo.State[stateKey].Location || {};
+        Object.keys(locWrapper).forEach(locKey => {
+          // If it's a string (like "20" or "def"), parse it
+          const { Value } = locWrapper[locKey];
+          if (Value === 'def') {
+            // If literally 'def', interpret as a numeric default, e.g. 20
+            lineVal += 20;
+          } else {
+            const parsed = parseFloat(Value);
+            if (!isNaN(parsed)) lineVal += parsed;
+          }
+        });
+      });
+    }
+    return lineVal;
+  });
 
-  const traceAbove = {
-    x: dateArray,
-    y: aboveLineY,
+  // Next, we create a "difference" trace that covers from the sum of all stacks 
+  // up to the line if sum < line (i.e. shortfall). 
+  // We'll do that by first computing "sumAtIndex" for each date index 
+  // across all state/location traces.
+  const sumAtEachDate = allDatesSorted.map((_, idx) => 0);
+
+  // For each trace, add up y[idx].
+  Object.keys(traceMap).forEach(comboKey => {
+    const tr = traceMap[comboKey];
+    tr.y.forEach((val, idx) => {
+      sumAtEachDate[idx] += val;
+    });
+  });
+
+  // Build difference array: if sum < line => (line - sum), else 0
+  const diffArray = sumAtEachDate.map((sumVal, i) => {
+    const lineVal = lineValues[i];
+    if (sumVal < lineVal) {
+      return lineVal - sumVal;
+    }
+    return 0;
+  });
+
+  // We'll add one more stacked trace for that difference in red
+  const diffTrace = {
+    x: allDatesSorted,
+    y: diffArray,
     type: 'scatter',
     mode: 'none',
     stackgroup: 'one',
     fill: 'tonexty',
-    fillcolor: 'blue',
-    name: 'Above Line'
+    fillcolor: 'red',
+    name: 'Shortfall (sum < line)'
   };
 
-  // 5) Determine the min/max date for a horizontal shape
-  //    If your xaxis is type: 'date', you can parse dateStrs to actual JS Date or just use the strings.
-  const minDate = dateArray[0];
-  const maxDate = dateArray[dateArray.length - 1];
-
-  return {
-    traces: [traceBelow, traceAbove],
-    minDate,
-    maxDate
+  // Also add a black dashed line trace so we can see the target
+  const lineTrace = {
+    x: allDatesSorted,
+    y: lineValues,
+    type: 'scatter',
+    mode: 'lines',
+    line: {
+      color: 'black',
+      dash: 'dash'
+    },
+    name: 'Line (Group1)'
   };
+
+  // Final array of traces:
+  //  - All state/location traces (colored from config)
+  //  - The "diff" trace in red (on top if sum < line)
+  //  - The dashed line trace
+  const allStackTraces = [
+    ...Object.values(traceMap), 
+    diffTrace, 
+    lineTrace
+  ];
+
+  const layout = {
+    title: `Stacked Chart for ${name}`,
+    xaxis: { title: 'Date', type: 'category' },
+    yaxis: { title: 'Value' },
+    legend: { orientation: 'h' },
+    // Optionally, make the chart taller if you have many traces
+    margin: { t: 50, b: 50, l: 50, r: 50 }
+  };
+
+  return { traces: allStackTraces, layout };
 }
