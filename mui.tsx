@@ -1,18 +1,8 @@
-import * as React from 'react';
-import { 
-  DataGrid, 
-  GridColDef, 
-  GridRowModesModel, 
-  GridRowModes, 
-  GridRowId, 
-  GridRowModel, 
-  GridActionsCellItem 
-} from '@mui/x-data-grid';
-import IconButton from '@mui/material/IconButton';
+import React, { useState, useEffect } from 'react';
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import { IconButton, TextField, Button } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
-import CancelIcon from '@mui/icons-material/Cancel';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 interface RowData {
   id: number;
@@ -21,127 +11,113 @@ interface RowData {
   stop: string;
 }
 
-export default function EditableDataGrid() {
-  const [rows, setRows] = React.useState<RowData[]>([
-    { id: 1, name: 'Task One', start: '2025-01-01', stop: '2025-02-01' },
-    { id: 2, name: 'Task Two', start: '2025-03-01', stop: '2025-04-01' },
-    { id: 3, name: 'Task Three', start: '2025-05-01', stop: '2025-06-01' },
-  ]);
+const MyDataGrid = () => {
+  const [rows, setRows] = useState<RowData[]>([]);
+  const [editRowId, setEditRowId] = useState<number | null>(null);
+  const [editedDates, setEditedDates] = useState<{ start: string; stop: string }>({
+    start: '',
+    stop: '',
+  });
 
-  // Keeps track of which row is in which mode (view or edit).
-  const [rowModesModel, setRowModesModel] = React.useState<GridRowModesModel>({});
+  // Fetch data from API
+  useEffect(() => {
+    fetch('/api/your-endpoint')
+      .then((res) => res.json())
+      .then((data) => {
+        const formattedData = data.map((item: any, index: number) => ({
+          id: index,
+          name: item.name,
+          start: item.startDate,
+          stop: item.stopDate,
+        }));
+        setRows(formattedData);
+      });
+  }, []);
 
-  // Start editing a row
-  const handleEditClick = (id: GridRowId) => {
-    setRowModesModel((prev) => ({
-      ...prev,
-      [id]: { mode: GridRowModes.Edit },
-    }));
-  };
-
-  // Save the row edits
-  const handleSaveClick = (id: GridRowId) => {
-    setRowModesModel((prev) => ({
-      ...prev,
-      [id]: { mode: GridRowModes.View },
-    }));
-  };
-
-  // Cancel the edits
-  const handleCancelClick = (id: GridRowId) => {
-    setRowModesModel((prev) => ({
-      ...prev,
-      [id]: { mode: GridRowModes.View, ignoreModifications: true },
-    }));
-  };
-
-  // Delete the row
-  const handleDeleteClick = (id: GridRowId) => {
-    setRows((prevRows) => prevRows.filter((row) => row.id !== id));
-  };
-
-  // Callback that the DataGrid calls when it wants to save edited data
-  const processRowUpdate = (newRow: GridRowModel, oldRow: GridRowModel) => {
-    // Typically, you’d send an API request here.
-    // For the demo, we’ll just merge the new row data into state.
-    const updatedRow = { ...oldRow, ...newRow };
-    setRows((prevRows) =>
-      prevRows.map((row) => (row.id === newRow.id ? updatedRow : row))
-    );
-    return updatedRow;
-  };
-
-  // If row editing fails, revert changes
-  const handleProcessRowUpdateError = (error: Error) => {
-    console.error(error);
-  };
-
-  // Define the columns
+  // Columns for the DataGrid
   const columns: GridColDef[] = [
-    { field: 'name', headerName: 'Name', width: 200, editable: true },
-    { field: 'start', headerName: 'Start Date', width: 150, editable: true },
-    { field: 'stop', headerName: 'Stop Date', width: 150, editable: true },
+    { field: 'name', headerName: 'Name', width: 200 },
+    {
+      field: 'start',
+      headerName: 'Start Date',
+      width: 150,
+      renderCell: (params: GridRenderCellParams) => {
+        if (editRowId === params.row.id) {
+          return (
+            <TextField
+              type="date"
+              value={editedDates.start}
+              onChange={(e) => setEditedDates({ ...editedDates, start: e.target.value })}
+            />
+          );
+        }
+        return params.value;
+      },
+    },
+    {
+      field: 'stop',
+      headerName: 'Stop Date',
+      width: 150,
+      renderCell: (params: GridRenderCellParams) => {
+        if (editRowId === params.row.id) {
+          return (
+            <TextField
+              type="date"
+              value={editedDates.stop}
+              onChange={(e) => setEditedDates({ ...editedDates, stop: e.target.value })}
+            />
+          );
+        }
+        return params.value;
+      },
+    },
     {
       field: 'actions',
       headerName: 'Actions',
-      type: 'actions',
-      width: 150,
-      getActions: (params) => {
-        const isInEditMode = rowModesModel[params.id]?.mode === GridRowModes.Edit;
-
-        if (isInEditMode) {
-          return [
-            <GridActionsCellItem
-              icon={<SaveIcon />}
-              label="Save"
-              onClick={() => handleSaveClick(params.id)}
-            />,
-            <GridActionsCellItem
-              icon={<CancelIcon />}
-              label="Cancel"
-              onClick={() => handleCancelClick(params.id)}
-              color="inherit"
-            />,
-            <GridActionsCellItem
-              icon={<DeleteIcon />}
-              label="Delete"
-              onClick={() => handleDeleteClick(params.id)}
-              color="inherit"
-            />,
-          ];
+      width: 100,
+      renderCell: (params: GridRenderCellParams) => {
+        if (editRowId === params.row.id) {
+          return (
+            <IconButton onClick={() => handleSave(params.row.id)}>
+              <SaveIcon />
+            </IconButton>
+          );
         }
-
-        return [
-          <GridActionsCellItem
-            icon={<EditIcon />}
-            label="Edit"
-            onClick={() => handleEditClick(params.id)}
-            color="inherit"
-          />,
-          <GridActionsCellItem
-            icon={<DeleteIcon />}
-            label="Delete"
-            onClick={() => handleDeleteClick(params.id)}
-            color="inherit"
-          />,
-        ];
+        return (
+          <IconButton onClick={() => handleEdit(params.row)}>
+            <EditIcon />
+          </IconButton>
+        );
       },
     },
   ];
 
+  // Handle edit
+  const handleEdit = (row: RowData) => {
+    setEditRowId(row.id);
+    setEditedDates({ start: row.start, stop: row.stop });
+  };
+
+  // Handle save
+  const handleSave = (id: number) => {
+    setRows((prevRows) =>
+      prevRows.map((row) => (row.id === id ? { ...row, ...editedDates } : row))
+    );
+    setEditRowId(null);
+
+    // Optionally, send the updated data to the API
+    // fetch('/api/your-endpoint', {
+    //   method: 'PUT',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify(editedDates),
+    // });
+  };
+
   return (
     <div style={{ height: 400, width: '100%' }}>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        // The rowModesModel tells DataGrid which rows are in "edit" mode.
-        rowModesModel={rowModesModel}
-        onRowModesModelChange={(newModel) => setRowModesModel(newModel)}
-        // Called before rowUpdate is finalized
-        processRowUpdate={processRowUpdate}
-        onProcessRowUpdateError={handleProcessRowUpdateError}
-        experimentalFeatures={{ newEditingApi: true }} // or remove if using stable editing features
-      />
+      <DataGrid rows={rows} columns={columns} pageSize={5} />
     </div>
   );
-}
+};
+
+export default MyDataGrid;
