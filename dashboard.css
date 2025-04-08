@@ -1,21 +1,30 @@
 .tab-buttons {
   display: flex;
   width: 100%;
+  border-bottom: 2px solid #ddd;
   margin-bottom: 20px;
 }
 
 .tab-button {
   flex: 1;
-  padding: 10px 15px;
-  background: #eaeaea;
+  padding: 12px;
+  background: #f9f9f9;
   border: none;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
-  border-radius: 6px 6px 0 0;
-  font-weight: bold;
-  transition: background 0.2s ease;
+  font-weight: 600;
+  font-size: 16px;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+  background-color: #f0f0f0;
 }
 
 .tab-button.active {
-  background-color: #0070f3;
-  color: white;
+  background-color: #ffffff;
+  border-bottom: 2px solid #0070f3;
+  color: #0070f3;
+  font-weight: 700;
 }
