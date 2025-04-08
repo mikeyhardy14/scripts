@@ -10,7 +10,6 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start; /* Use center if you want true vertical centering */
   padding: 40px 20px;
   min-height: 100vh;
   box-sizing: border-box;
@@ -30,6 +29,7 @@ body, html, #root {
   width: 100%;
   max-width: 900px;
   margin-bottom: 30px;
+  box-sizing: border-box;
 }
 
 .filter-card {
@@ -37,4 +37,24 @@ body, html, #root {
   gap: 1rem;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
+}
+
+.submit-button {
+  padding: 10px 20px;
+  background-color: #0070f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s ease;
+}
+
+.submit-button:hover {
+  background-color: #005ec2;
+}
+
+.tabs-container {
+  width: 100%;
 }
