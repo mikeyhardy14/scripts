@@ -1,8 +1,13 @@
 .tab-buttons {
   display: flex;
   width: 100%;
-  border-bottom: 2px solid #ddd;
   margin-bottom: 20px;
+  border-bottom: 1px solid #ddd;
+  border-left: 1px solid #eee;
+  border-right: 1px solid #eee;
+  border-top: 1px solid #eee;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
 }
 
 .tab-button {
@@ -10,12 +15,16 @@
   padding: 12px;
   background: #f9f9f9;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-right: 1px solid #eee;
   cursor: pointer;
   font-weight: 600;
   font-size: 16px;
   color: #333;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
+}
+
+.tab-button:last-child {
+  border-right: none;
 }
 
 .tab-button:hover {
@@ -24,7 +33,7 @@
 
 .tab-button.active {
   background-color: #ffffff;
-  border-bottom: 2px solid #0070f3;
   color: #0070f3;
   font-weight: 700;
+  border-bottom: 2px solid #0070f3;
 }
