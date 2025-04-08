@@ -3,7 +3,7 @@ import Tabs from '../components/Tabs';
 import DateRangeFilter from '../components/filters/DateRangeFilter';
 import TypeFilter from '../components/filters/TypeFilter';
 import EventTypeFilter from '../components/filters/EventTypeFilter';
-import styles from './Dashboard.module.css';
+import '../styles/dashboard.css';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('Overview');
@@ -14,10 +14,10 @@ const Dashboard = () => {
   });
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Dashboard</h1>
+    <div className="dashboard-container">
+      <h1 className="dashboard-title">Dashboard</h1>
 
-      <div className={`${styles.card} ${styles.filterCard}`}>
+      <div className="card filter-card">
         <DateRangeFilter
           value={filters.dateRange}
           onChange={(range) => setFilters(prev => ({ ...prev, dateRange: range }))}
@@ -32,7 +32,7 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className={styles.card}>
+      <div className="card">
         <Tabs active={activeTab} onChange={setActiveTab} filters={filters} />
       </div>
     </div>
