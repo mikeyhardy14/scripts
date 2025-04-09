@@ -1,12 +1,12 @@
 import React, { useState, useRef, MouseEvent } from 'react';
 
-// Data types for tasks and groups.
+// Types for tasks and groups.
 interface Task {
   id: string;
   groupId: number;
   name: string;
-  start: string; // ISO date string, e.g., "2025-04-01"
-  end: string;   // ISO date string, e.g., "2025-04-05"
+  start: string; // ISO date string, for example "2025-04-01"
+  end: string;   // ISO date string, for example "2025-04-05"
   eventType: string;
 }
 
@@ -26,7 +26,7 @@ interface ChartAProps {
   groups?: Group[];
   viewStart?: string; // ISO date string for chart start view
   viewEnd?: string;   // ISO date string for chart end view
-  filters?: any;      // Placeholder for filtering logic if needed
+  filters?: any;      // Placeholder for filtering logic, if needed
 }
 
 const ChartA: React.FC<ChartAProps> = ({
@@ -36,7 +36,7 @@ const ChartA: React.FC<ChartAProps> = ({
   viewEnd,
   filters
 }) => {
-  // Sample data if no external data is provided.
+  // Default sample data if none is provided.
   const defaultTasks: Task[] = [
     { id: '1', groupId: 1, name: 'Asset 1 Event', start: '2025-04-01', end: '2025-04-05', eventType: 'EventA' },
     { id: '2', groupId: 2, name: 'Asset 2 Event', start: '2025-04-02', end: '2025-04-06', eventType: 'EventB' },
@@ -49,51 +49,59 @@ const ChartA: React.FC<ChartAProps> = ({
     { id: 3, title: 'Asset 3' }
   ];
 
-  // Use external data if provided.
   const tasks = propTasks && propTasks.length > 0 ? propTasks : defaultTasks;
   const groups = propGroups && propGroups.length > 0 ? propGroups : defaultGroups;
 
-  // Mapping from event types to colors.
+  // Mapping event types to colors.
   const eventColors: { [key: string]: string } = {
     EventA: '#0070f3',
     EventB: '#ff4d4f',
     EventC: '#52c41a'
-    // Add additional event types as needed…
+    // Add additional event type mappings as necessary.
   };
 
-  // Parse each task's start and end dates.
+  // Parse task dates.
   const taskDates = tasks.map(task => ({
     start: new Date(task.start),
     end: new Date(task.end)
   }));
 
-  // Calculate the overall bounds from tasks.
+  // Compute overall min and max dates from tasks.
   const computedMinTime = Math.min(...taskDates.map(d => d.start.getTime()));
   const computedMaxTime = Math.max(...taskDates.map(d => d.end.getTime()));
   const computedMinDate = new Date(computedMinTime);
   const computedMaxDate = new Date(computedMaxTime);
 
-  // Use the provided viewStart/viewEnd props if given; otherwise use computed values.
+  // Use the provided view dates if given; otherwise use the computed bounds.
   const effectiveMinDate = viewStart ? new Date(viewStart) : computedMinDate;
   const effectiveMaxDate = viewEnd ? new Date(viewEnd) : computedMaxDate;
 
-  // Dimensions (customize as needed)
+  // Chart dimensions.
   const totalWidth = 800;
-  const marginLeft = 150; // space for group labels
+  const marginLeft = 150;  // space for group labels
   const marginRight = 20;
   const marginTop = 20;
-  const marginBottom = 60; // extra space for x-axis labels at the bottom
-  const rowHeight = 20;    // fixed row height as requested
-  const barHeight = 14;    // slightly smaller than row height to allow for padding
+  const marginBottom = 60; // space for x-axis labels at bottom
   const chartWidth = totalWidth - marginLeft - marginRight;
+
+  // Fixed row and bar dimensions.
+  const rowHeight = 20;  
+  // Draw a background "bar" for each group that does not fill the entire row,
+  // so there’s visible space (gap) between rows.
+  const backgroundBarHeight = 12;
+  const backgroundBarOffset = (rowHeight - backgroundBarHeight) / 2; // equals 4 px
+  // Event bars will be drawn on top, with a slight inset.
+  const eventBarPadding = 1;
+  const eventBarHeight = backgroundBarHeight - 2 * eventBarPadding; // equals 10 px
+
   const totalHeight = marginTop + marginBottom + groups.length * rowHeight;
 
-  // Helper: convert a date to an x coordinate within the chart area.
+  // Helper: convert a date to an x coordinate within the timeline.
   const dateToX = (date: Date) => {
     return marginLeft + ((date.getTime() - effectiveMinDate.getTime()) / (effectiveMaxDate.getTime() - effectiveMinDate.getTime())) * chartWidth;
   };
 
-  // Generate tick marks (we'll use 5 evenly spaced ticks).
+  // Generate x-axis tick marks (using 5 evenly spaced ticks).
   const tickCount = 5;
   const ticks: Date[] = [];
   for (let i = 0; i <= tickCount; i++) {
@@ -101,11 +109,11 @@ const ChartA: React.FC<ChartAProps> = ({
     ticks.push(new Date(tickTime));
   }
 
-  // Tooltip state to show event details on hover.
+  // Tooltip state.
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Handler to update tooltip position and content.
+  // Update tooltip position and content on hover.
   const handleMouseMove = (e: MouseEvent, task: Task) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -131,49 +139,24 @@ const ChartA: React.FC<ChartAProps> = ({
         margin: '0 auto'
       }}
     >
-      {/* Legend in the top right */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 10,
-          right: 10,
-          backgroundColor: 'rgba(255,255,255,0.9)',
-          padding: '8px 12px',
-          borderRadius: '4px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          fontSize: '12px',
-          zIndex: 10
-        }}
-      >
-        <strong style={{ fontSize: '14px' }}>Legend:</strong>
-        <div style={{ marginTop: '4px' }}>
-          {Object.entries(eventColors).map(([eventType, color]) => (
-            <div key={eventType} style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-              <div style={{ width: '12px', height: '12px', backgroundColor: color, marginRight: '6px' }} />
-              <span>{eventType}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* SVG container for the timeline chart */}
+      {/* SVG container for the Gantt chart */}
       <svg width={totalWidth} height={totalHeight} style={{ border: '1px solid #ddd', background: '#fff' }}>
-        {/* Render faint gray backgrounds for each group row */}
+        {/* Draw a faint gray background bar for each group row (with gaps between rows) */}
         {groups.map((group, index) => {
-          const y = marginTop + index * rowHeight;
+          const y = marginTop + index * rowHeight + backgroundBarOffset;
           return (
             <rect
               key={`bg-${group.id}`}
               x={marginLeft}
               y={y}
               width={chartWidth}
-              height={rowHeight}
+              height={backgroundBarHeight}
               fill="rgba(0, 0, 0, 0.03)"
             />
           );
         })}
 
-        {/* Render x-axis ticks and grid lines (labels at bottom) */}
+        {/* Render x-axis ticks and grid lines at the bottom */}
         {ticks.map((tick, index) => {
           const x = dateToX(tick);
           return (
@@ -204,7 +187,7 @@ const ChartA: React.FC<ChartAProps> = ({
           );
         })}
 
-        {/* Render task bars */}
+        {/* Render event bars on top of the gray background */}
         {tasks.map(task => {
           const groupIndex = groups.findIndex(g => g.id === task.groupId);
           if (groupIndex === -1) return null;
@@ -212,7 +195,8 @@ const ChartA: React.FC<ChartAProps> = ({
           const taskEnd = new Date(task.end);
           const x = dateToX(taskStart);
           const xEnd = dateToX(taskEnd);
-          const y = marginTop + groupIndex * rowHeight + (rowHeight - barHeight) / 2;
+          // Calculate y: start at the row top plus the inset for the event bar.
+          const y = marginTop + groupIndex * rowHeight + backgroundBarOffset + eventBarPadding;
           const width = xEnd - x;
           return (
             <g key={task.id}>
@@ -220,18 +204,18 @@ const ChartA: React.FC<ChartAProps> = ({
                 x={x}
                 y={y}
                 width={width}
-                height={barHeight}
+                height={eventBarHeight}
                 fill={eventColors[task.eventType] || '#999'}
-                rx="3"
-                ry="3"
+                rx="2"
+                ry="2"
                 onMouseMove={(e) => handleMouseMove(e, task)}
                 onMouseEnter={(e) => handleMouseMove(e, task)}
                 onMouseLeave={handleMouseLeave}
               />
-              {/* Centered text on task bar (optional) */}
+              {/* Optional centered text on the event bar */}
               <text
                 x={x + width / 2}
-                y={y + barHeight / 2}
+                y={y + eventBarHeight / 2}
                 textAnchor="middle"
                 alignmentBaseline="middle"
                 fontSize="10"
@@ -245,7 +229,7 @@ const ChartA: React.FC<ChartAProps> = ({
         })}
       </svg>
 
-      {/* Tooltip: appears on hover over a task */}
+      {/* Tooltip for event details on hover */}
       {tooltip && (
         <div
           style={{
