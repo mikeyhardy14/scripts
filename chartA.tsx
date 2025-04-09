@@ -1,12 +1,12 @@
-import React, { useState, useRef, useEffect, MouseEvent } from 'react';
+import React, { useState, useRef, MouseEvent } from 'react';
 
-// Types for tasks and groups.
+// Data types for tasks and groups.
 interface Task {
   id: string;
   groupId: number;
   name: string;
-  start: string; // ISO date string (e.g., "2025-04-01")
-  end: string;   // ISO date string (e.g., "2025-04-05")
+  start: string; // ISO date string, e.g., "2025-04-01"
+  end: string;   // ISO date string, e.g., "2025-04-05"
   eventType: string;
 }
 
@@ -24,15 +24,19 @@ interface TooltipData {
 interface ChartAProps {
   tasks?: Task[];
   groups?: Group[];
-  filters?: any; // Use filters to pre-filter tasks if needed.
+  viewStart?: string; // ISO date string for chart start view
+  viewEnd?: string;   // ISO date string for chart end view
+  filters?: any;      // Placeholder for filtering logic if needed
 }
 
 const ChartA: React.FC<ChartAProps> = ({
   tasks: propTasks,
   groups: propGroups,
+  viewStart,
+  viewEnd,
   filters
 }) => {
-  // Default (sample) data if no data is provided via props.
+  // Sample data if no external data is provided.
   const defaultTasks: Task[] = [
     { id: '1', groupId: 1, name: 'Asset 1 Event', start: '2025-04-01', end: '2025-04-05', eventType: 'EventA' },
     { id: '2', groupId: 2, name: 'Asset 2 Event', start: '2025-04-02', end: '2025-04-06', eventType: 'EventB' },
@@ -45,54 +49,59 @@ const ChartA: React.FC<ChartAProps> = ({
     { id: 3, title: 'Asset 3' }
   ];
 
-  // Allow external data; otherwise, use defaults.
+  // Use external data if provided.
   const tasks = propTasks && propTasks.length > 0 ? propTasks : defaultTasks;
   const groups = propGroups && propGroups.length > 0 ? propGroups : defaultGroups;
 
-  // Mapping event types to colors.
+  // Mapping from event types to colors.
   const eventColors: { [key: string]: string } = {
     EventA: '#0070f3',
     EventB: '#ff4d4f',
     EventC: '#52c41a'
-    // Extend as needed…
+    // Add additional event types as needed…
   };
 
-  // Parse task dates.
+  // Parse each task's start and end dates.
   const taskDates = tasks.map(task => ({
     start: new Date(task.start),
     end: new Date(task.end)
   }));
 
-  // Determine time bounds.
-  const minTime = Math.min(...taskDates.map(d => d.start.getTime()));
-  const maxTime = Math.max(...taskDates.map(d => d.end.getTime()));
-  const minDate = new Date(minTime);
-  const maxDate = new Date(maxTime);
+  // Calculate the overall bounds from tasks.
+  const computedMinTime = Math.min(...taskDates.map(d => d.start.getTime()));
+  const computedMaxTime = Math.max(...taskDates.map(d => d.end.getTime()));
+  const computedMinDate = new Date(computedMinTime);
+  const computedMaxDate = new Date(computedMaxTime);
 
-  // Dimensions for the SVG chart.
+  // Use the provided viewStart/viewEnd props if given; otherwise use computed values.
+  const effectiveMinDate = viewStart ? new Date(viewStart) : computedMinDate;
+  const effectiveMaxDate = viewEnd ? new Date(viewEnd) : computedMaxDate;
+
+  // Dimensions (customize as needed)
   const totalWidth = 800;
-  const marginLeft = 150;  // space for group labels
+  const marginLeft = 150; // space for group labels
   const marginRight = 20;
   const marginTop = 20;
-  const marginBottom = 60; // extra space for x-axis labels at bottom
-  const rowHeight = 40;    // assets stacked closer together
-  const barHeight = 16;
+  const marginBottom = 60; // extra space for x-axis labels at the bottom
+  const rowHeight = 20;    // fixed row height as requested
+  const barHeight = 14;    // slightly smaller than row height to allow for padding
+  const chartWidth = totalWidth - marginLeft - marginRight;
   const totalHeight = marginTop + marginBottom + groups.length * rowHeight;
 
-  // Convert a date to an x-coordinate.
+  // Helper: convert a date to an x coordinate within the chart area.
   const dateToX = (date: Date) => {
-    return marginLeft + ((date.getTime() - minDate.getTime()) / (maxDate.getTime() - minDate.getTime())) * (totalWidth - marginLeft - marginRight);
+    return marginLeft + ((date.getTime() - effectiveMinDate.getTime()) / (effectiveMaxDate.getTime() - effectiveMinDate.getTime())) * chartWidth;
   };
 
-  // Generate tick marks; here, 5 evenly spaced ticks.
+  // Generate tick marks (we'll use 5 evenly spaced ticks).
   const tickCount = 5;
   const ticks: Date[] = [];
   for (let i = 0; i <= tickCount; i++) {
-    const tickTime = minDate.getTime() + (i * (maxDate.getTime() - minDate.getTime())) / tickCount;
+    const tickTime = effectiveMinDate.getTime() + (i * (effectiveMaxDate.getTime() - effectiveMinDate.getTime())) / tickCount;
     ticks.push(new Date(tickTime));
   }
 
-  // Tooltip state.
+  // Tooltip state to show event details on hover.
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -100,7 +109,6 @@ const ChartA: React.FC<ChartAProps> = ({
   const handleMouseMove = (e: MouseEvent, task: Task) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    // Set tooltip content with task name and formatted start/end dates.
     const content = `${task.name}\n${new Date(task.start).toLocaleDateString()} - ${new Date(task.end).toLocaleDateString()}`;
     setTooltip({
       x: e.clientX - rect.left + 10,
@@ -148,16 +156,29 @@ const ChartA: React.FC<ChartAProps> = ({
         </div>
       </div>
 
-      {/* SVG for the timeline */}
+      {/* SVG container for the timeline chart */}
       <svg width={totalWidth} height={totalHeight} style={{ border: '1px solid #ddd', background: '#fff' }}>
-        {/* X-axis ticks and grid lines drawn at the bottom */}
+        {/* Render faint gray backgrounds for each group row */}
+        {groups.map((group, index) => {
+          const y = marginTop + index * rowHeight;
+          return (
+            <rect
+              key={`bg-${group.id}`}
+              x={marginLeft}
+              y={y}
+              width={chartWidth}
+              height={rowHeight}
+              fill="rgba(0, 0, 0, 0.03)"
+            />
+          );
+        })}
+
+        {/* Render x-axis ticks and grid lines (labels at bottom) */}
         {ticks.map((tick, index) => {
           const x = dateToX(tick);
           return (
             <g key={index}>
-              {/* Vertical grid line */}
               <line x1={x} y1={marginTop} x2={x} y2={totalHeight - marginBottom} stroke="#ccc" />
-              {/* Tick label at bottom */}
               <text x={x} y={totalHeight - marginBottom + 20} textAnchor="middle" fontSize="10" fill="#333">
                 {tick.toLocaleDateString()}
               </text>
@@ -165,7 +186,7 @@ const ChartA: React.FC<ChartAProps> = ({
           );
         })}
 
-        {/* Group labels on the left */}
+        {/* Render group labels on the left */}
         {groups.map((group, index) => {
           const y = marginTop + index * rowHeight + rowHeight / 2;
           return (
@@ -183,18 +204,16 @@ const ChartA: React.FC<ChartAProps> = ({
           );
         })}
 
-        {/* Task bars */}
+        {/* Render task bars */}
         {tasks.map(task => {
           const groupIndex = groups.findIndex(g => g.id === task.groupId);
           if (groupIndex === -1) return null;
-
           const taskStart = new Date(task.start);
           const taskEnd = new Date(task.end);
           const x = dateToX(taskStart);
           const xEnd = dateToX(taskEnd);
           const y = marginTop + groupIndex * rowHeight + (rowHeight - barHeight) / 2;
           const width = xEnd - x;
-
           return (
             <g key={task.id}>
               <rect
@@ -209,7 +228,7 @@ const ChartA: React.FC<ChartAProps> = ({
                 onMouseEnter={(e) => handleMouseMove(e, task)}
                 onMouseLeave={handleMouseLeave}
               />
-              {/* Optional: Centered text inside the bar, if desired */}
+              {/* Centered text on task bar (optional) */}
               <text
                 x={x + width / 2}
                 y={y + barHeight / 2}
@@ -226,7 +245,7 @@ const ChartA: React.FC<ChartAProps> = ({
         })}
       </svg>
 
-      {/* Tooltip: an absolutely positioned box that appears on hover */}
+      {/* Tooltip: appears on hover over a task */}
       {tooltip && (
         <div
           style={{
