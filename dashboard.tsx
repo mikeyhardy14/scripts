@@ -1,40 +1,31 @@
-import { useState } from 'react';
-import Tabs from '../components/Tabs';
-import DateRangeFilter from '../components/filters/DateRangeFilter';
-import TypeFilter from '../components/filters/TypeFilter';
-import EventTypeFilter from '../components/filters/EventTypeFilter';
-import '../styles/dashboard.css';
+import React, { useState } from 'react';
+import Tabs, { ChartData } from '../components/Tabs';
 
-const Dashboard = () => {
+const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('Overview');
-  const [filters, setFilters] = useState({
-    dateRange: { start: null, end: null },
-    type: '',
-    eventTypes: [] as string[],
-  });
+
+  // Sample chart data.
+  const chartData: ChartData = {
+    events: [
+      { Name: "Adolf Hitler", Start: "1933-01-30", End: "1945-04-30", EventType: "Totalitarian" },
+      { Name: "Joseph Stalin", Start: "1924-03-05", End: "1953-03-05", EventType: "Communist" }
+    ],
+    colorMap: {
+      Totalitarian: "#ff4d4f",
+      Communist: "#52c41a"
+    },
+    assets: ["Adolf Hitler", "Joseph Stalin"]
+  };
 
   return (
-    <div className="dashboard-container">
-      <h1 className="dashboard-title">Dashboard</h1>
-
-      <div className="card filter-card">
-        <DateRangeFilter
-          value={filters.dateRange}
-          onChange={(range) => setFilters(prev => ({ ...prev, dateRange: range }))}
-        />
-        <TypeFilter
-          value={filters.type}
-          onChange={(type) => setFilters(prev => ({ ...prev, type }))}
-        />
-        <EventTypeFilter
-          value={filters.eventTypes}
-          onChange={(eventTypes) => setFilters(prev => ({ ...prev, eventTypes }))}
-        />
-      </div>
-
-      <div className="card">
-        <Tabs active={activeTab} onChange={setActiveTab} filters={filters} />
-      </div>
+    <div style={{ padding: '20px' }}>
+      <h1>Dashboard</h1>
+      <Tabs 
+          active={activeTab} 
+          onChange={setActiveTab} 
+          filters={{}} 
+          chartData={chartData} 
+      />
     </div>
   );
 };
