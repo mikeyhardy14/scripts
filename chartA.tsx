@@ -1,21 +1,21 @@
 import React, { useState, useRef, MouseEvent } from 'react';
 
 //
-// Define the type for each dictator event.
+// Define the type for each event.
 //
-export interface DictatorEvent {
-  Name: string;       // e.g., "Adolf Hitler"
-  Start: string;      // ISO date string, e.g., "1933-01-30"
-  End: string;        // ISO date string, e.g., "1945-04-30"
-  EventType: string;  // e.g., "Totalitarian"
+export interface Event {
+  Name: string;       // e.g., "Event One"
+  Start: string;      // ISO date string, e.g., "2020-01-01"
+  End: string;        // ISO date string, e.g., "2020-12-31"
+  EventType: string;  // e.g., "TypeA"
 }
 
 export interface TimelineChartProps {
-  events: DictatorEvent[];              // List of dictator events
-  colorMap: { [key: string]: string };   // Mapping: EventType -> color hex
-  assets: string[];                     // List of asset names (each will be a row)
-  viewStart?: string;                   // Optional ISO date string for chart start view
-  viewEnd?: string;                     // Optional ISO date string for chart end view
+  events: Event[];                    // List of events
+  colorMap: { [key: string]: string }; // Mapping: EventType => color hex
+  assets: string[];                   // List of asset names (each will be a row)
+  viewStart?: string;                 // Optional ISO date string for chart start view
+  viewEnd?: string;                   // Optional ISO date string for chart end view
 }
 
 interface TooltipData {
@@ -36,7 +36,7 @@ const TimelineChart: React.FC<TimelineChartProps> = ({
     return null;
   }
 
-  // Compute overall time bounds from events.
+  // Compute overall time bounds from the events.
   const eventDates = events.map(evt => ({
     start: new Date(evt.Start),
     end: new Date(evt.End)
@@ -50,23 +50,30 @@ const TimelineChart: React.FC<TimelineChartProps> = ({
 
   // Chart dimensions and layout.
   const totalWidth = 800;
-  const marginLeft = 150;  // space on left for asset labels
+  const marginLeft = 150;  // Space on left for asset labels.
   const marginRight = 20;
   const marginTop = 20;
-  const marginBottom = 60; // space at bottom for x-axis tick labels
+  const marginBottom = 60; // Space at bottom for x-axis tick labels.
   const chartWidth = totalWidth - marginLeft - marginRight;
   
-  const rowHeight = 20;          // fixed row height per asset
-  const backgroundBarHeight = 12;  // height of the gray background bar
-  const backgroundBarOffset = (rowHeight - backgroundBarHeight) / 2;
-  const eventBarPadding = 1;     // inset for event bar
+  const rowHeight = 20;             // Fixed row height per asset.
+  const backgroundBarHeight = 12;   // Height of the gray background bar.
+  const backgroundBarOffset = (rowHeight - backgroundBarHeight) / 2; // Vertical centering.
+  const eventBarPadding = 1;        // Inset for event bar.
   const eventBarHeight = backgroundBarHeight - 2 * eventBarPadding;
   const totalHeight = marginTop + marginBottom + assets.length * rowHeight;
   
-  // Helper: Map a Date to an x-coordinate within the chart.
+  // Helper: Map a Date to an x-coordinate within the timeline area.
   const dateToX = (date: Date) => {
     return marginLeft + ((date.getTime() - effectiveMinDate.getTime()) /
       (effectiveMaxDate.getTime() - effectiveMinDate.getTime())) * chartWidth;
+  };
+
+  // Determine how to format tick labels.
+  const timespan = effectiveMaxDate.getTime() - effectiveMinDate.getTime();
+  const fiveYears = 5 * 365 * 24 * 60 * 60 * 1000; // Approximate 5 years in ms.
+  const formatTick = (date: Date) => {
+    return timespan >= fiveYears ? date.getFullYear().toString() : date.toLocaleDateString();
   };
 
   // Generate x-axis tick marks (using 5 evenly spaced ticks).
@@ -82,7 +89,7 @@ const TimelineChart: React.FC<TimelineChartProps> = ({
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseMove = (e: MouseEvent, evt: DictatorEvent) => {
+  const handleMouseMove = (e: MouseEvent, evt: Event) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const content = `${evt.Name}\n${new Date(evt.Start).toLocaleDateString()} - ${new Date(evt.End).toLocaleDateString()}`;
@@ -130,8 +137,14 @@ const TimelineChart: React.FC<TimelineChartProps> = ({
           return (
             <g key={index}>
               <line x1={x} y1={marginTop} x2={x} y2={totalHeight - marginBottom} stroke="#ccc" />
-              <text x={x} y={totalHeight - marginBottom + 20} textAnchor="middle" fontSize="10" fill="#333">
-                {tick.toLocaleDateString()}
+              <text
+                x={x}
+                y={totalHeight - marginBottom + 20}
+                textAnchor="middle"
+                fontSize="10"
+                fill="#333"
+              >
+                {formatTick(tick)}
               </text>
             </g>
           );
@@ -156,9 +169,10 @@ const TimelineChart: React.FC<TimelineChartProps> = ({
         })}
 
         {/* Render event bars on top of the background bars.
-            Each event is drawn on the row corresponding to the asset whose name matches the event's Name.
+            Each event is rendered on the row corresponding to the asset whose name matches the event’s Name.
         */}
         {events.map((evt, idx) => {
+          // Determine the row by matching the event's Name to one of the assets.
           const assetIndex = assets.indexOf(evt.Name);
           if (assetIndex === -1) return null;
           
@@ -183,6 +197,7 @@ const TimelineChart: React.FC<TimelineChartProps> = ({
                 onMouseEnter={(e) => handleMouseMove(e, evt)}
                 onMouseLeave={handleMouseLeave}
               />
+              {/* Optionally, render centered text on the event bar */}
               <text
                 x={x + width / 2}
                 y={y + eventBarHeight / 2}
