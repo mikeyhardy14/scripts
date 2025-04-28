@@ -1,253 +1,213 @@
+// CustodianDataGrid.tsx
 import * as React from 'react';
+import { styled } from '@mui/material/styles';
+import Tooltip, { tooltipClasses } from '@mui/material/Tooltip';
 import {
   DataGrid,
   GridColDef,
   GridRowModesModel,
   GridRowModes,
-  GridRowId,
-  GridRowModel,
   GridActionsCellItem,
-  GridRowParams,
+  GridPreProcessEditCellProps,
+  GridRenderEditCellParams,
+  GridRowId,
 } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
-import SaveIcon from '@mui/icons-material/Save';
-import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { keyframes, styled } from '@mui/material/styles';
-// import { nanoid } from 'nanoid'; // Optionally use a library for unique IDs
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Close';
+import { useCustodies } from '../hooks/useCustodies';
 
-/**
- * If you have data that might NOT have an id, define a minimal interface.
- * E.g., the "partial row" might look like { name, start, stop } only.
- */
-interface PartialRowData {
-  name: string;
-  start: string;
-  stop: string;
-  id?: number; // This may or may not exist in the incoming data
-}
-
-/** 
- * The row interface we *actually* want in state, 
- * guaranteeing an `id` is present.
- */
-export interface RowData {
-  id: number;
-  name: string;
-  start: string;
-  stop: string;
-}
-
-interface EditableDataGridProps {
-  /**
-   * Initial list of rows. Some or all might be missing an `id`.
-   */
-  initialRows?: PartialRowData[];
-  /**
-   * Callback when rows change (e.g., saved or deleted).
-   */
-  onRowsChange?: (updatedRows: RowData[]) => void;
-}
-
-/** Keyframes for flashing a row green and fading to transparent */
-const flashGreenFade = keyframes`
-  0% {
-    background-color: #c8f0c6; /* Light green */
-  }
-  100% {
-    background-color: transparent;
-  }
-`;
-
-/** 
- * We create a styled wrapper around a simple div. 
- * Any child element with the class "flash-green" gets our animation.
- */
-const DataGridWrapper = styled('div')({
-  width: '100%',
+const StyledBox = styled('div')(({ theme }) => ({
   height: 400,
-  '.flash-green': {
-    animation: `${flashGreenFade} 2s forwards`,
+  width: '100%',
+  '& .MuiDataGrid-cell--editable': {
+    backgroundColor: 'rgb(217 243 190)',
+    '& .MuiInputBase-root': { height: '100%' },
+    ...theme.applyStyles('dark', { backgroundColor: '#376331' }),
   },
-});
+  '& .Mui-error': {
+    backgroundColor: 'rgba(126,10,15,0.1)',
+    color: '#750f0f',
+    ...theme.applyStyles('dark', {
+      backgroundColor: 'rgba(126,10,15,0)',
+      color: '#ff4343',
+    }),
+  },
+}));
 
-export function EditableDataGrid({
-  initialRows = [
-    { name: 'Task One',  start: '2025-01-01', stop: '2025-02-01' },
-    { name: 'Task Two',  start: '2025-03-01', stop: '2025-04-01' },
-    { name: 'Task Three',start: '2025-05-01', stop: '2025-06-01' },
-  ],
-  onRowsChange,
-}: EditableDataGridProps) {
-  /**
-   * 1) Convert "partial" rows (with possible missing `id`) to "full" rows
-   *    by generating an ID if none is present.
-   */
-  const rowsWithIds = React.useMemo<RowData[]>(() => {
-    return initialRows.map((row, index) => {
-      return {
-        // Use the existing `id` if present; otherwise generate one
-        id: row.id ?? index + 1, 
-        // or use nanoid() if you want a random unique ID:
-        // id: row.id ?? nanoid(),
-        name: row.name,
-        start: row.start,
-        stop: row.stop,
-      };
-    });
-  }, [initialRows]);
+// Tooltip wrapper for cell-level errors
+const StyledTooltip = styled(({ className, ...props }: any) => (
+  <Tooltip {...props} classes={{ popper: className }} />
+))(({ theme }) => ({
+  [`& .${tooltipClasses.tooltip}`]: {
+    backgroundColor: theme.palette.error.main,
+    color: theme.palette.error.contrastText,
+  },
+}));
 
-  /**
-   * 2) We store these "full" rows in state.
-   */
-  const [rows, setRows] = React.useState<RowData[]>(rowsWithIds);
+function EditInputCell(props: GridRenderEditCellParams) {
+  const { error } = props;
+  return (
+    <StyledTooltip open={!!error} title={error}>
+      <props.components.EditInputCell {...props} />
+    </StyledTooltip>
+  );
+}
 
-  /**
-   * 3) Track which row is in "Edit" or "View" mode
-   */
+export interface CustodianDataGridProps {
+  asset: string;
+  dataVersion: string;
+}
+
+export default function CustodianDataGrid({
+  asset,
+  dataVersion,
+}: CustodianDataGridProps) {
+  const { data, error, isLoading } = useCustodies(dataVersion);
+  const [rows, setRows] = React.useState<any[]>([]);
   const [rowModesModel, setRowModesModel] = React.useState<GridRowModesModel>({});
 
-  /**
-   * 4) Keep track of which row just got updated (for the "flash" effect).
-   */
-  const [flashedRowId, setFlashedRowId] = React.useState<GridRowId | null>(null);
+  // load → array → filter → sort
+  React.useEffect(() => {
+    if (!isLoading && data) {
+      const arr = Array.isArray(data) ? data : Object.values(data);
+      const filtered = arr.filter((c: any) => c.asset === asset);
+      filtered.sort(
+        (a: any, b: any) =>
+          new Date(a.start).getTime() - new Date(b.start).getTime()
+      );
+      setRows(filtered);
+    }
+  }, [data, isLoading, asset]);
 
-  // -- ACTION HANDLERS --
-  const handleEditClick = (id: GridRowId) => {
-    setRowModesModel((prev) => ({
-      ...prev,
+  // validation for Custodian
+  const validateCustodian: GridPreProcessEditCellProps['preProcessEditCellProps'] = (
+    params
+  ) => {
+    const value = (params.props.value || '').toString();
+    const error = value.trim() === '' ? 'Required' : '';
+    return { ...params.props, error };
+  };
+
+  // validation for Start date
+  const validateStart: GridPreProcessEditCellProps['preProcessEditCellProps'] = (
+    params
+  ) => {
+    const v = (params.props.value || '').toString();
+    const isValid = /^\d{4}-\d{2}-\d{2}$/.test(v);
+    return { ...params.props, error: isValid ? '' : 'Format YYYY-MM-DD' };
+  };
+
+  // action handlers
+  const handleEditClick = (id: GridRowId) => () => {
+    setRowModesModel((m) => ({
+      ...m,
       [id]: { mode: GridRowModes.Edit },
     }));
   };
-
-  const handleSaveClick = (id: GridRowId) => {
-    setRowModesModel((prev) => ({
-      ...prev,
+  const handleSaveClick = (id: GridRowId) => () => {
+    setRowModesModel((m) => ({
+      ...m,
       [id]: { mode: GridRowModes.View },
     }));
   };
-
-  const handleCancelClick = (id: GridRowId) => {
-    setRowModesModel((prev) => ({
-      ...prev,
+  const handleDeleteClick = (id: GridRowId) => () => {
+    // TODO: call your delete API, then:
+    setRows((r) => r.filter((row) => row.id !== id));
+  };
+  const handleCancelClick = (id: GridRowId) => () => {
+    setRowModesModel((m) => ({
+      ...m,
       [id]: { mode: GridRowModes.View, ignoreModifications: true },
     }));
   };
 
-  const handleDeleteClick = (id: GridRowId) => {
-    setRows((prevRows) => {
-      const updated = prevRows.filter((row) => row.id !== id);
-      onRowsChange?.(updated);
-      return updated;
-    });
+  // processRowUpdate is called on Save; you can call your update API here
+  const processRowUpdate = async (newRow: any) => {
+    // TODO: await saveCustody(newRow)
+    return newRow;
   };
 
-  /**
-   * 5) processRowUpdate gets called by DataGrid 
-   *    when a row is saved (after inline editing).
-   */
-  const processRowUpdate = (newRow: GridRowModel, oldRow: GridRowModel) => {
-    const updatedRow = { ...oldRow, ...newRow } as RowData;
-    setRows((prevRows) => {
-      const updatedRows = prevRows.map((row) =>
-        row.id === oldRow.id ? updatedRow : row
-      );
-      onRowsChange?.(updatedRows);
-      return updatedRows;
-    });
-
-    // Trigger the "flash" on the just-updated row
-    setFlashedRowId(updatedRow.id);
-    // Remove the flash after 2 seconds
-    setTimeout(() => {
-      setFlashedRowId(null);
-    }, 2000);
-
-    return updatedRow;
-  };
-
-  const handleProcessRowUpdateError = (error: Error) => {
-    console.error(error);
-  };
-
-  /**
-   * 6) Columns, including the "Actions" column
-   */
   const columns: GridColDef[] = [
-    { field: 'name',  headerName: 'Name',       width: 200, editable: true },
-    { field: 'start', headerName: 'Start Date', width: 150, editable: true },
-    { field: 'stop',  headerName: 'Stop Date',  width: 150, editable: true },
+    {
+      field: 'custodian',
+      headerName: 'Custodian',
+      width: 180,
+      editable: true,
+      preProcessEditCellProps: validateCustodian,
+      renderEditCell: EditInputCell,
+    },
+    { field: 'asset', headerName: 'Asset', hide: true },
+    {
+      field: 'start',
+      headerName: 'Start',
+      width: 120,
+      editable: true,
+      preProcessEditCellProps: validateStart,
+      renderEditCell: EditInputCell,
+    },
+    { field: 'stop', headerName: 'Stop', width: 120 },
+    { field: 'source', headerName: 'Source', width: 150 },
     {
       field: 'actions',
-      headerName: 'Actions',
       type: 'actions',
-      width: 150,
+      width: 120,
+      headerName: 'Actions',
       getActions: (params) => {
-        const isInEditMode = rowModesModel[params.id]?.mode === GridRowModes.Edit;
-
-        if (isInEditMode) {
-          return [
-            <GridActionsCellItem
-              icon={<SaveIcon />}
-              label="Save"
-              onClick={() => handleSaveClick(params.id)}
-            />,
-            <GridActionsCellItem
-              icon={<CancelIcon />}
-              label="Cancel"
-              onClick={() => handleCancelClick(params.id)}
-              color="inherit"
-            />,
-            <GridActionsCellItem
-              icon={<DeleteIcon />}
-              label="Delete"
-              onClick={() => handleDeleteClick(params.id)}
-              color="inherit"
-            />,
-          ];
-        }
-
-        return [
-          <GridActionsCellItem
-            icon={<EditIcon />}
-            label="Edit"
-            onClick={() => handleEditClick(params.id)}
-            color="inherit"
-          />,
-          <GridActionsCellItem
-            icon={<DeleteIcon />}
-            label="Delete"
-            onClick={() => handleDeleteClick(params.id)}
-            color="inherit"
-          />,
-        ];
+        const isEditing =
+          rowModesModel[params.id]?.mode === GridRowModes.Edit;
+        return isEditing
+          ? [
+              <GridActionsCellItem
+                icon={<SaveIcon />}
+                label="Save"
+                onClick={handleSaveClick(params.id)}
+                showInMenu={false}
+              />,
+              <GridActionsCellItem
+                icon={<CancelIcon />}
+                label="Cancel"
+                onClick={handleCancelClick(params.id)}
+              />,
+              <GridActionsCellItem
+                icon={<DeleteIcon />}
+                label="Delete"
+                onClick={handleDeleteClick(params.id)}
+                color="error"
+              />,
+            ]
+          : [
+              <GridActionsCellItem
+                icon={<EditIcon />}
+                label="Edit"
+                onClick={handleEditClick(params.id)}
+              />,
+              <GridActionsCellItem
+                icon={<DeleteIcon />}
+                label="Delete"
+                onClick={handleDeleteClick(params.id)}
+                color="error"
+              />,
+            ];
       },
     },
   ];
 
-  /**
-   * 7) getRowClassName is used to apply the "flash-green" class 
-   *    if the row was just updated.
-   */
-  const getRowClassName = (params: GridRowParams) => {
-    return params.id === flashedRowId ? 'flash-green' : '';
-  };
+  if (isLoading) return <div>Loading…</div>;
+  if (error) return <div>Error loading custodies</div>;
 
-  /**
-   * Finally, render the DataGrid with our columns and row data.
-   */
   return (
-    <DataGridWrapper>
+    <StyledBox>
       <DataGrid
         rows={rows}
         columns={columns}
+        editMode="row"
         rowModesModel={rowModesModel}
-        onRowModesModelChange={(model) => setRowModesModel(model)}
+        onRowModesModelChange={setRowModesModel}
         processRowUpdate={processRowUpdate}
-        onProcessRowUpdateError={handleProcessRowUpdateError}
-        getRowClassName={getRowClassName}
-        // experimentalFeatures={{ newEditingApi: true }}
+        experimentalFeatures={{ newEditingApi: true }}
       />
-    </DataGridWrapper>
+    </StyledBox>
   );
 }
