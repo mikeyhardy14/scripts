@@ -20,7 +20,6 @@ export interface WIPChartProps {
 
 const formatDate = (d: Date) => d.toISOString().split('T')[0]
 
-/** Builds an array of YYYY-MM-DD strings from start to stop (inclusive) */
 const generateDateArray = (start: string | Date, stop: string | Date): string[] => {
   const dates: string[] = []
   const curr = new Date(start)
@@ -38,14 +37,14 @@ const WIPChart: React.FC<WIPChartProps> = ({ data, colorMap, start, stop }) => {
   const xDates = generateDateArray(start, stop)
 
   const traces: Data[] = []
-  for (const [location, locObj] of Object.entries(data)) {
+  for (const locObj of Object.values(data)) {
     for (const [type, values] of Object.entries(locObj.Totals)) {
       traces.push({
         x: xDates,
         y: values,
         type: 'scatter',
         mode: 'lines+markers',
-        name: `${location} – ${type}`,
+        name: type,
         line: { shape: 'linear', color: colorMap[type], width: 2 },
         marker: { color: colorMap[type] },
         fill: 'tozeroy',
