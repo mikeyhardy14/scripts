@@ -1,9 +1,7 @@
-// components/WIPChart.tsx
+// src/components/WIPChart.tsx
 import React from 'react'
-import dynamic from 'next/dynamic'
+import Plot from 'react-plotly.js'
 import { Layout, Config, Data } from 'plotly.js'
-
-const Plot = dynamic(() => import('react-plotly.js'), { ssr: false })
 
 export interface WIPData {
   [location: string]: {
@@ -15,24 +13,20 @@ export interface WIPData {
 
 export interface WIPChartProps {
   data: WIPData
-  colorMap: { [type: string]: string }
+  colorMap: Record<string, string>
   start: string | Date
   stop: string | Date
 }
 
 const formatDate = (d: Date) => d.toISOString().split('T')[0]
 
-/**
- * Generates an array of date strings ("YYYY-MM-DD") from start to stop inclusive.
- */
+/** Builds an array of YYYY-MM-DD strings from start to stop (inclusive) */
 const generateDateArray = (start: string | Date, stop: string | Date): string[] => {
   const dates: string[] = []
-  let curr = typeof start === 'string' ? new Date(start) : new Date(start)
-  const end = typeof stop === 'string' ? new Date(stop) : new Date(stop)
-  // ensure time portion doesn’t interfere
+  const curr = new Date(start)
+  const end = new Date(stop)
   curr.setHours(0, 0, 0, 0)
   end.setHours(0, 0, 0, 0)
-
   while (curr <= end) {
     dates.push(formatDate(curr))
     curr.setDate(curr.getDate() + 1)
@@ -43,39 +37,27 @@ const generateDateArray = (start: string | Date, stop: string | Date): string[] 
 const WIPChart: React.FC<WIPChartProps> = ({ data, colorMap, start, stop }) => {
   const xDates = generateDateArray(start, stop)
 
-  // build one trace per location/type
   const traces: Data[] = []
-  Object.entries(data).forEach(([location, locObj]) => {
-    Object.entries(locObj.Totals).forEach(([type, values]) => {
+  for (const [location, locObj] of Object.entries(data)) {
+    for (const [type, values] of Object.entries(locObj.Totals)) {
       traces.push({
         x: xDates,
         y: values,
         type: 'scatter',
         mode: 'lines+markers',
         name: `${location} – ${type}`,
-        marker: { color: colorMap[type] || undefined },
-        line: { shape: 'linear', color: colorMap[type] || undefined, width: 2 },
-        fill: 'tozeroy', // comment out if you don’t want an area
+        line: { shape: 'linear', color: colorMap[type], width: 2 },
+        marker: { color: colorMap[type] },
+        fill: 'tozeroy',
       })
-    })
-  })
+    }
+  }
 
   const layout: Partial<Layout> = {
-    title: 'WIP Chart',
-    xaxis: {
-      title: 'Date',
-      type: 'date',
-      tickformat: '%Y-%m-%d',
-      tickangle: -45,
-    },
-    yaxis: {
-      title: 'Count',
-    },
-    legend: {
-      orientation: 'h',
-      x: 0,
-      y: -0.2,
-    },
+    title: 'WIP by Day',
+    xaxis: { title: 'Date', type: 'date', tickangle: -45, tickformat: '%Y-%m-%d' },
+    yaxis: { title: 'Count' },
+    legend: { orientation: 'h', x: 0, y: -0.2 },
     margin: { t: 50, b: 100, l: 50, r: 50 },
     autosize: true,
   }
@@ -86,12 +68,9 @@ const WIPChart: React.FC<WIPChartProps> = ({ data, colorMap, start, stop }) => {
   }
 
   return (
-    <Plot
-      data={traces}
-      layout={layout}
-      config={config}
-      style={{ width: '100%', height: '100%' }}
-    />
+    <div style={{ width: '100%', height: '100%' }}>
+      <Plot data={traces} layout={layout} config={config} style={{ width: '100%', height: '100%' }} />
+    </div>
   )
 }
 
