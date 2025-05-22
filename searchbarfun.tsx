@@ -1,38 +1,36 @@
-'use client';
-
 import { useState, useMemo, KeyboardEvent } from 'react';
-import Link from 'next/link';
-import { FaCity, FaLandmark } from 'react-icons/fa';   // ← pick any icons you like
-import styles from './SearchBar.module.css';          // optional CSS-module
+import { Link as RouterLink } from 'react-router-dom';
+import {
+  TextField, Paper, List, ListItemButton, ListItemIcon,
+  ListItemText, Box, Typography
+} from '@mui/material';
+import LocationCityIcon    from '@mui/icons-material/LocationCity'; // ← list-1
+import PublicIcon          from '@mui/icons-material/Public';       // ← list-2
+import LinkOffIcon         from '@mui/icons-material/LinkOff';
 
-// --- hard-coded demo data (swap for API / props) ---------------------------
-const NJ_LIST = ['Atlantic City', 'Cape May', 'Hoboken', 'Trenton', 'Princeton'];
-const NY_LIST = ['Albany', 'Buffalo', 'Ithaca', 'Rochester', 'Syracuse', 'Yonkers'];
+const LIST_NJ = ['Atlantic City', 'Cape May', 'Hoboken', 'Trenton', 'Princeton'];
+const LIST_NY = ['Albany', 'Buffalo', 'Ithaca', 'Rochester', 'Syracuse', 'Yonkers'];
 
-/** Internal helper so we can tag each name with its origin */
 type Entry = { name: string; list: 'NJ' | 'NY' };
 
 export default function SearchBar() {
   const [query, setQuery] = useState('');
-  const [highlight, setHighlight] = useState(0);          // arrow-key selection index
+  const [highlight, setHighlight] = useState(0);
 
-  /** All matches, memoised so it only recomputes when query changes */
   const matches: Entry[] = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
 
-    // filter each list, then merge & slice the first 7
-    const fromNj = NJ_LIST.filter(n => n.toLowerCase().includes(q))
-                          .map(name => ({ name, list: 'NJ' as const }));
-    const fromNy = NY_LIST.filter(n => n.toLowerCase().includes(q))
-                          .map(name => ({ name, list: 'NY' as const }));
-
-    return [...fromNj, ...fromNy].slice(0, 7);
+    const fromNj = LIST_NJ.filter(n => n.toLowerCase().includes(q))
+                          .map(name => ({ name, list: 'NJ' }));
+    const fromNy = LIST_NY.filter(n => n.toLowerCase().includes(q))
+                          .map(name => ({ name, list: 'NY' }));
+    return [...fromNj, ...fromNy].slice(0, 7);          // cap at seven
   }, [query]);
 
-  // basic ↑ ↓ ↵ keyboard support
-  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeys = (e: KeyboardEvent<HTMLInputElement>) => {
     if (!matches.length) return;
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setHighlight(i => (i + 1) % matches.length);
@@ -40,53 +38,59 @@ export default function SearchBar() {
       e.preventDefault();
       setHighlight(i => (i - 1 + matches.length) % matches.length);
     } else if (e.key === 'Enter') {
-      const choice = matches[highlight];
-      if (choice) {
-        window.location.href =
-          choice.list === 'NJ'
-            ? `/NJ/${encodeURIComponent(choice.name)}`
-            : `/NY/${encodeURIComponent(choice.name)}`;
+      const chosen = matches[highlight];
+      if (chosen) {
+        window.location.href = `/${chosen.list}/${encodeURIComponent(chosen.name)}`;
       }
     }
   };
 
   return (
-    <div className={styles.wrapper}>
-      <input
-        type="text"
-        placeholder="Search cities…"
+    <Box sx={{ position: 'relative', width: 320, mx: 'auto' }}>
+      <TextField
+        fullWidth
+        size="small"
+        label="Search…"
         value={query}
-        onChange={e => {
-          setQuery(e.target.value);
-          setHighlight(0);     // reset arrow selection
-        }}
-        onKeyDown={handleKey}
-        className={styles.input}
+        onChange={e => { setQuery(e.target.value); setHighlight(0); }}
+        onKeyDown={handleKeys}
       />
 
       {matches.length > 0 && (
-        <ul className={styles.dropdown}>
-          {matches.map((m, idx) => (
-            <li key={m.list + m.name}
-                className={`${styles.item} ${idx === highlight ? styles.active : ''}`}>
-              <Link
-                href={m.list === 'NJ' ? `/NJ/${m.name}` : `/NY/${m.name}`}
-                onClick={() => setQuery('')}   // optional: clear search after click
+        <Paper
+          elevation={3}
+          sx={{
+            position: 'absolute',
+            top: '100%', mt: 1, width: '100%',
+            maxHeight: 280,                // ≈ 7 × 40 px rows
+            overflowY: 'auto', zIndex: 10,
+          }}
+        >
+          <List disablePadding>
+            {matches.map((m, idx) => (
+              <ListItemButton
+                key={m.list + m.name}
+                component={RouterLink}
+                to={`/${m.list}/${m.name}`}
+                selected={idx === highlight}
+                onClick={() => setQuery('')}
               >
-                {m.list === 'NJ' ? <FaCity className={styles.icon} /> : <FaLandmark className={styles.icon} />}
-                {m.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                  {m.list === 'NJ' ? <LocationCityIcon /> : <PublicIcon />}
+                </ListItemIcon>
+                <ListItemText primary={m.name} />
+              </ListItemButton>
+            ))}
+          </List>
+        </Paper>
       )}
 
-      {/* fallback icon when no results */}
       {query && matches.length === 0 && (
-        <div className={styles.noResults}>
-          <i className="fa-solid fa-link-slash" />  No match
-        </div>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+          <LinkOffIcon color="error" />
+          <Typography color="error">No match</Typography>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 }
