@@ -1,0 +1,37 @@
+.wrapper { position: relative; width: 320px; margin: 0 auto; }
+.input   { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #ccc; border-radius: 4px; }
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 224px;          /* ≈ 7 × 32 px rows */
+  overflow-y: auto;           /* scroll when >7 matches */
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.item:hover, .active { background:#f1f5f9; }
+
+.icon { width: 16px; height: 16px; }
+
+.noResults {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 4px;
+  color: #dc2626;   /* red-ish */
+}
