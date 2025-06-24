@@ -1,48 +1,63 @@
-import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
-import Tooltip, { tooltipClasses, TooltipProps } from '@mui/material/Tooltip';
-import {
+import Tooltip, { tooltipClasses } from '@mui/material/Tooltip';
+import type { TooltipProps } from '@mui/material/Tooltip';
+import { 
   DataGrid,
-  GridColDef,
-  GridRowsProp,
-  GridRenderEditCellParams,
-  GridPreProcessEditCellProps,
   GridRowModes,
-  GridRowModel,
   GridEditInputCell,
+  GridToolbarContainer,
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton,
+  GridToolbarDensitySelector,
+  GridToolbarExport
 } from '@mui/x-data-grid';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import SaveIcon from '@mui/icons-material/Save';
-import CancelIcon from '@mui/icons-material/Close';
-import DiscardIcon from '@mui/icons-material/Undo';
-import Button from '@mui/material/Button';
+import type { 
+  GridColDef,
+  GridPreProcessEditCellProps,
+  GridRowModel,
+  GridRenderEditCellParams
+} from '@mui/x-data-grid';
+import { 
+  Box, 
+  Stack, 
+  Typography, 
+  CircularProgress,
+  Alert,
+  IconButton,
+  Button
+} from '@mui/material';
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+  Add as AddIcon
+} from '@mui/icons-material';
+import { useFakeArrowAPI, arrowTableToRows } from '../hooks/useFakeArrowAPI';
 
-const StyledBox = styled('div')(({ theme }) => ({
-  height: 400,
+// Styled components
+const StyledDataGridContainer = styled('div')(({ theme }) => ({
+  height: 600,
   width: '100%',
-  marginTop: theme.spacing(2),
-  '& .MuiDataGrid-cell--editable': {
-    backgroundColor: 'rgb(217 243 190)',
-    '& .MuiInputBase-root': {
-      height: '100%',
-    },
-    ...theme.applyStyles('dark', {
-      backgroundColor: '#376331',
-    }),
+  '& .MuiDataGrid-cell--editable .MuiInputBase-root': {
+    height: '100%',
   },
   '& .Mui-error': {
-    backgroundColor: 'rgba(126,10,15, 0.1)',
+    backgroundColor: 'rgb(126,10,15, 0.1)',
     color: '#750f0f',
     ...theme.applyStyles('dark', {
-      backgroundColor: 'rgba(126,10,15, 0)',
+      backgroundColor: 'rgb(126,10,15, 0)',
       color: '#ff4343',
     }),
   },
-  // Class applied temporarily for the flash effect on successful save
-  '& .flash-success': {
-    backgroundColor: 'lightgreen',
-    transition: 'background-color 1s ease-out',
+  '& .flash-green': {
+    backgroundColor: '#c8f0c6 !important',
+    animation: 'flash 1s ease-in-out',
+  },
+  '@keyframes flash': {
+    '0%, 100%': { backgroundColor: '#c8f0c6' },
+    '50%': { backgroundColor: '#81c784' },
   },
 }));
 
@@ -55,8 +70,18 @@ const StyledTooltip = styled(({ className, ...props }: TooltipProps) => (
   },
 }));
 
-// Custom edit input cell that wraps the default GridEditInputCell with a tooltip
-function CustomEditInputCell(props: GridRenderEditCellParams) {
+// Custom edit cell for dates to ensure yyyy-mm-dd format
+function DateEditInputCell(props: GridRenderEditCellParams) {
+  const { value, ...other } = props;
+  
+  // Convert Date object to yyyy-mm-dd string for the input
+  const dateValue = value ? (value instanceof Date ? value.toISOString().split('T')[0] : value) : '';
+  
+  return <GridEditInputCell {...other} value={dateValue} />;
+}
+
+// Custom edit cell with validation tooltip
+function LocationEditInputCell(props: GridRenderEditCellParams) {
   const { error } = props;
   return (
     <StyledTooltip open={!!error} title={error || ''}>
@@ -65,262 +90,347 @@ function CustomEditInputCell(props: GridRenderEditCellParams) {
   );
 }
 
-// Validation function for Custodian field.
-// If the entered value is "Mike" (case insensitive), return an error message.
-async function validateCustodian(value: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      if (value.toLowerCase() === 'mike') {
-        resolve('Mike is not allowed.');
-      } else {
-        resolve(null);
-      }
-    }, 300);
-  });
-}
+// Validation function
+const validateLocation = (location: string): string | null => {
+  if (location.length < 2) {
+    return 'Location must be at least 2 characters long.';
+  } else if (location.toUpperCase() === 'NYC') {
+    return 'NYC is not allowed as a location.';
+  } else {
+    return null;
+  }
+};
 
-// Dummy validation for Start (always passes)
-async function validateStart(value: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(null), 300);
-  });
-}
+// Types
+type Row = {
+  id: number;
+  location: string;
+  name: string;
+  start: string;
+  stop: string;
+  source: string;
+};
 
-// Initial sample data rows
-const initialRows: GridRowsProp = [
-  { id: 1, custodian: 'Alice', asset: 'Asset A', start: '2023-01-01', stop: '2023-01-31' },
-  { id: 2, custodian: 'Bob', asset: 'Asset B', start: '2023-02-01', stop: '2023-02-28' },
-];
+type RowModesModel = Record<number, { mode: GridRowModes }>;
 
-// Type for error tracking per row field.
-interface RowError {
-  custodian?: string;
-  start?: string;
-}
+export default function DataGridDemo() {
+  const { data: arrowData, isLoading } = useFakeArrowAPI();
+  const [rows, setRows] = useState<Row[]>([]);
+  const [rowModesModel, setRowModesModel] = useState<RowModesModel>({});
+  const [flashRowId, setFlashRowId] = useState<number | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<number, Record<string, boolean>>>({});
 
-export default function ExtendedDataGrid() {
-  const [rows, setRows] = React.useState<GridRowModel[]>(initialRows);
-  // Tracks whether a row is in edit mode or view mode.
-  const [rowModesModel, setRowModesModel] = React.useState<{ [id: number]: { mode: GridRowModes } }>({});
-  // Used to trigger a flash effect on saved rows.
-  const [flashRows, setFlashRows] = React.useState<{ [id: number]: boolean }>({});
-  // State to track validation errors for each row's editable fields.
-  const [rowErrors, setRowErrors] = React.useState<{ [id: number]: RowError }>({});
+  // Effects
+  useEffect(() => {
+    if (arrowData && !isLoading) {
+      setRows(arrowTableToRows(arrowData));
+    }
+  }, [arrowData, isLoading]);
 
-  // Sort rows: unsaved rows always come first; saved rows are sorted by the 'start' date.
-  const sortedRows = React.useMemo(() => {
-    return rows.slice().sort((a, b) => {
-      if (a.unsaved && !b.unsaved) return -1;
-      if (!a.unsaved && b.unsaved) return 1;
-      return a.start.localeCompare(b.start);
-    });
-  }, [rows]);
+  // Loading state
+  if (isLoading) {
+    return (
+      <Box sx={{ 
+        width: '100%', 
+        height: 500, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: 2
+      }}>
+        <CircularProgress size={60} />
+        <Typography variant="h6">Loading Arrow DataFrame...</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Fetching project data from fake API
+        </Typography>
+      </Box>
+    );
+  }
 
-  // Handler to enable edit mode for a row.
-  const handleEditClick = (id: number) => {
-    setRowModesModel((prev) => ({ ...prev, [id]: { mode: GridRowModes.Edit } }));
-  };
-
-  // Handler to cancel edit mode and discard changes.
-  const handleCancelClick = (id: number) => {
-    setRowModesModel((prev) => ({
+  // Event handlers
+  const handleRowModeChange = (id: number, mode: GridRowModes, options?: { ignoreModifications?: boolean }) => {
+    setRowModesModel(prev => ({
       ...prev,
-      [id]: { mode: GridRowModes.View, ignoreModifications: true },
+      [id]: { mode, ...options } as any
     }));
   };
 
-  // processRowUpdate validates the row values.
-  // If validation fails, it throws an error and the row remains in edit mode.
-  const processRowUpdate = async (newRow: GridRowModel, oldRow: GridRowModel) => {
-    const custodianError = await validateCustodian(newRow.custodian?.toString() || '');
-    const startError = await validateStart(newRow.start?.toString() || '');
-    if (custodianError || startError) {
-      throw new Error(custodianError || startError || 'Validation error');
-    }
-    return newRow;
-  };
-
-  // Handler to save a row.
-  // It calls processRowUpdate and, if validation passes, removes the 'unsaved' flag,
-  // sorts the rows (if the row was newly added) and exits edit mode.
-  const handleSaveClick = async (id: number) => {
-    const row = rows.find((r) => r.id === id);
-    if (!row) return;
-    try {
-      const updatedRow = await processRowUpdate(row, row);
-      // Remove the 'unsaved' flag if it exists.
-      if (updatedRow.unsaved) {
-        delete updatedRow.unsaved;
-      }
-      // Update rows and sort them.
-      setRows((prevRows) => {
-        const newRows = prevRows.map((r) => (r.id === id ? updatedRow : r));
-        return newRows.slice().sort((a, b) => {
-          if (a.unsaved && !b.unsaved) return -1;
-          if (!a.unsaved && b.unsaved) return 1;
-          return a.start.localeCompare(b.start);
-        });
-      });
-      // Set row mode to view.
-      setRowModesModel((prev) => ({ ...prev, [id]: { mode: GridRowModes.View } }));
-      // Trigger flash effect.
-      setFlashRows((prev) => ({ ...prev, [id]: true }));
-      setTimeout(() => {
-        setFlashRows((prev) => ({ ...prev, [id]: false }));
-      }, 1000);
-    } catch (error) {
-      console.error('Validation error:', error);
-      // Optionally, you can display a notification to the user here.
-    }
-  };
-
-  // Handler to delete a row.
-  const handleDeleteClick = (id: number) => {
-    setRows((prevRows) => prevRows.filter((row) => row.id !== id));
-    // Clean up errors and editing mode for the row.
-    setRowErrors((prev) => {
+  const handleEditClick = (id: number) => handleRowModeChange(id, GridRowModes.Edit);
+  const handleSaveClick = (id: number) => handleRowModeChange(id, GridRowModes.View);
+  const handleCancelClick = (id: number) => {
+    handleRowModeChange(id, GridRowModes.View, { ignoreModifications: true });
+    // Clear validation errors for this row when canceling
+    setValidationErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[id];
       return newErrors;
     });
-    setRowModesModel((prev) => {
-      const newModes = { ...prev };
-      delete newModes[id];
-      return newModes;
+  };
+
+  const handleDeleteRow = (id: number) => {
+    setRows(prev => prev.filter(row => row.id !== id));
+    // Clear validation errors for deleted row
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[id];
+      return newErrors;
     });
   };
 
-  // Handler to add a new row.
-  // New rows are flagged as unsaved so they remain at the top until saved.
   const handleAddRow = () => {
-    const newId = rows.length > 0 ? Math.max(...rows.map((r) => Number(r.id))) + 1 : 1;
-    const newRow: GridRowModel = {
+    const newId = Math.max(...rows.map(r => r.id), 0) + 1;
+    const newRow: Row = {
       id: newId,
-      custodian: '',
-      asset: '',
-      start: new Date().toISOString().slice(0, 10),
-      stop: '',
-      unsaved: true,
+      location: '',
+      name: `New Project ${newId}`,
+      start: new Date().toISOString().split('T')[0], // Today's date
+      stop: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 90 days from now
+      source: 'Internal'
     };
-    setRows((prevRows) => [newRow, ...prevRows]);
-    setRowModesModel((prev) => ({ ...prev, [newId]: { mode: GridRowModes.Edit } }));
+    
+    setRows(prev => [...prev, newRow]);
+    setRowModesModel(prev => ({
+      ...prev,
+      [newId]: { mode: GridRowModes.Edit }
+    }));
   };
 
-  // Define grid columns.
+  const processRowUpdate = (newRow: GridRowModel) => {
+    const updatedRow = { ...newRow } as Row;
+    setRows(prev => prev.map(row => row.id === newRow.id ? updatedRow : row));
+    
+    // Clear validation errors for this row after successful save
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[updatedRow.id];
+      return newErrors;
+    });
+    
+    // Flash effect
+    setFlashRowId(newRow.id as number);
+    setTimeout(() => setFlashRowId(null), 1000);
+    
+    return updatedRow;
+  };
+
+  // Validation with error tracking
+  const preProcessEditLocationProps = (params: GridPreProcessEditCellProps) => {
+    const errorMessage = validateLocation(params.props.value!.toString());
+    const hasError = !!errorMessage;
+    
+    // Track validation errors
+    const rowId = Number(params.id);
+    setValidationErrors(prev => ({
+      ...prev,
+      [rowId]: {
+        ...prev[rowId],
+        location: hasError
+      }
+    }));
+    
+    return { ...params.props, error: errorMessage };
+  };
+
+  // Check if a row has validation errors
+  const hasValidationErrors = (id: number) => {
+    const rowErrors = validationErrors[id];
+    return rowErrors && Object.values(rowErrors).some(hasError => hasError);
+  };
+
+  // Column definitions
   const columns: GridColDef[] = [
-    {
-      field: 'custodian',
-      headerName: 'Custodian',
-      width: 150,
+    { field: 'id', headerName: 'ID', width: 70 },
+    { 
+      field: 'location', 
+      headerName: 'Location', 
+      width: 150, 
       editable: true,
-      preProcessEditCellProps: async (params: GridPreProcessEditCellProps) => {
-        const error = await validateCustodian(params.props.value?.toString() || '');
-        setRowErrors((prev) => ({
-          ...prev,
-          [params.id]: { ...prev[params.id], custodian: error || '' },
-        }));
-        return { ...params.props, error };
-      },
-      cellClassName: (params) => (flashRows[params.id as number] ? 'flash-success' : ''),
-      renderEditCell: (params: GridRenderEditCellParams) => <CustomEditInputCell {...params} />,
+      preProcessEditCellProps: preProcessEditLocationProps,
+      renderEditCell: (params) => <LocationEditInputCell {...params} />,
     },
-    {
-      field: 'asset',
-      headerName: 'Asset',
-      width: 150,
-      editable: false,
-    },
-    {
-      field: 'start',
-      headerName: 'Start',
-      width: 150,
+    { field: 'name', headerName: 'Name', width: 200, editable: false },
+    { 
+      field: 'start', 
+      headerName: 'Start Date', 
+      width: 130, 
       editable: true,
-      preProcessEditCellProps: async (params: GridPreProcessEditCellProps) => {
-        const error = await validateStart(params.props.value?.toString() || '');
-        setRowErrors((prev) => ({
-          ...prev,
-          [params.id]: { ...prev[params.id], start: error || '' },
-        }));
-        return { ...params.props, error };
+      type: 'date',
+      valueGetter: (params: any) => {
+        if (!params) return null;
+        // params is the actual value, not an object with a value property
+        return params instanceof Date ? params : new Date(params);
       },
-      cellClassName: (params) => (flashRows[params.id as number] ? 'flash-success' : ''),
-      renderEditCell: (params: GridRenderEditCellParams) => <CustomEditInputCell {...params} />,
+      valueFormatter: (params: any) => {
+        if (!params) return '';
+        const date = params instanceof Date ? params : new Date(params);
+        return date.toISOString().split('T')[0]; // yyyy-mm-dd format
+      },
+      preProcessEditCellProps: (params: GridPreProcessEditCellProps) => ({
+        ...params.props, 
+        error: isNaN(new Date(params.props.value).getTime())
+      }),
+      renderEditCell: (params) => <DateEditInputCell {...params} />,
     },
-    {
-      field: 'stop',
-      headerName: 'Stop',
-      width: 150,
+    { 
+      field: 'stop', 
+      headerName: 'Stop Date', 
+      width: 130, 
       editable: false,
-    },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      type: 'actions',
-      width: 150,
-      sortable: false,
-      filterable: false,
-      disableColumnMenu: true,
-      renderCell: (params) => {
-        const isInEditMode = rowModesModel[params.id as number]?.mode === GridRowModes.Edit;
-        const errorsForRow = rowErrors[params.id] || {};
-        const hasError = Object.values(errorsForRow).some((error) => error);
-        return isInEditMode ? (
-          <>
-            <CancelIcon
-              onClick={() => handleCancelClick(params.id as number)}
-              style={{ cursor: 'pointer', marginRight: 8 }}
-              fontSize="small"
-            />
-            <SaveIcon
-              onClick={!hasError ? () => handleSaveClick(params.id as number) : undefined}
-              style={{
-                cursor: hasError ? 'not-allowed' : 'pointer',
-                marginRight: 8,
-                opacity: hasError ? 0.5 : 1,
-              }}
-              fontSize="small"
-            />
-            <DiscardIcon
-              onClick={() => {
-                // Discard logic placeholder
-              }}
-              style={{ cursor: 'pointer' }}
-              fontSize="small"
-            />
-          </>
-        ) : (
-          <>
-            <EditIcon
-              onClick={() => handleEditClick(params.id as number)}
-              style={{ cursor: 'pointer', marginRight: 8 }}
-              fontSize="small"
-            />
-            <DeleteIcon
-              onClick={() => handleDeleteClick(params.id as number)}
-              style={{ cursor: 'pointer' }}
-              fontSize="small"
-            />
-          </>
-        );
+      type: 'date',
+      valueGetter: (params: any) => {
+        if (!params) return null;
+        // params is the actual value, not an object with a value property
+        return params instanceof Date ? params : new Date(params);
       },
+      valueFormatter: (params: any) => {
+        if (!params) return '';
+        const date = params instanceof Date ? params : new Date(params);
+        return date.toISOString().split('T')[0]; // yyyy-mm-dd format
+      },
+      renderEditCell: (params) => <DateEditInputCell {...params} />,
     },
+    { field: 'source', headerName: 'Source', width: 120, editable: false },
   ];
 
+  // Action buttons renderer
+  const renderActionButtons = (params: any) => {
+    const isInEditMode = rowModesModel[params.id]?.mode === GridRowModes.Edit;
+    const hasErrors = hasValidationErrors(params.id);
+
+    if (isInEditMode) {
+      return (
+        <Stack direction="row" spacing={1}>
+          <Button
+            size="small"
+            variant="contained"
+            color="primary"
+            disabled={hasErrors}
+            onClick={() => handleSaveClick(params.id)}
+            title={hasErrors ? "Fix validation errors before saving" : "Save"}
+            sx={{
+              minWidth: 'auto',
+              px: 1.5,
+              opacity: hasErrors ? 0.5 : 1,
+            }}
+          >
+            <SaveIcon fontSize="small" />
+          </Button>
+          <IconButton 
+            size="small" 
+            onClick={() => handleCancelClick(params.id)}
+            title="Cancel"
+          >
+            <CancelIcon />
+          </IconButton>
+          <IconButton 
+            size="small" 
+            color="error"
+            onClick={() => handleDeleteRow(params.id)}
+            title="Delete"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Stack>
+      );
+    }
+
+    return (
+      <Stack direction="row" spacing={1}>
+        <IconButton 
+          size="small" 
+          onClick={() => handleEditClick(params.id)}
+          title="Edit"
+        >
+          <EditIcon />
+        </IconButton>
+        <IconButton 
+          size="small" 
+          color="error" 
+          onClick={() => handleDeleteRow(params.id)}
+          title="Delete"
+        >
+          <DeleteIcon />
+        </IconButton>
+      </Stack>
+    );
+  };
+
+  // Custom toolbar with proper slotProps usage
+  function CustomToolbar() {
+    return (
+      <GridToolbarContainer>
+        <Button
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={handleAddRow}
+          sx={{ mr: 1 }}
+        >
+          Add Row
+        </Button>
+        <GridToolbarColumnsButton />
+        <GridToolbarFilterButton />
+        <GridToolbarDensitySelector
+          slotProps={{ tooltip: { title: 'Change table density' } }}
+        />
+        <Box sx={{ flexGrow: 1 }} />
+        <GridToolbarExport
+          slotProps={{
+            tooltip: { title: 'Export data to CSV or Excel' },
+          }}
+        />
+      </GridToolbarContainer>
+    );
+  }
+
   return (
-    <div>
-      <Button variant="contained" color="primary" onClick={handleAddRow}>
-        Add Row
-      </Button>
-      <StyledBox>
+    <Box sx={{ width: '100%' }}>
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <Typography variant="body2">
+          <strong>Arrow DataFrame loaded!</strong> 
+          {arrowData && ` Rows: ${arrowData.numRows}, Columns: ${arrowData.numCols}`}
+        </Typography>
+      </Alert>
+      
+      <Box sx={{ p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">Projects Database</Typography>
+      </Box>
+      
+      <StyledDataGridContainer>
         <DataGrid
-          rows={sortedRows}
-          columns={columns}
+          rows={rows}
+          columns={[
+            ...columns,
+            {
+              field: 'actions',
+              headerName: 'Actions',
+              width: 200,
+              renderCell: renderActionButtons,
+              sortable: false,
+              filterable: false,
+              disableColumnMenu: true,
+            }
+          ]}
           editMode="row"
           rowModesModel={rowModesModel}
+          onRowEditStart={(params, event) => { event.defaultMuiPrevented = true; }}
+          onRowEditStop={(params, event) => { event.defaultMuiPrevented = true; }}
           processRowUpdate={processRowUpdate}
-          experimentalFeatures={{ newEditingApi: true }}
+          columnVisibilityModel={{ name: false }}
+          getRowClassName={(params) => flashRowId === params.id ? 'flash-green' : ''}
+          slots={{
+            toolbar: CustomToolbar,
+          }}
+          sx={{
+            height: '100%',
+            '& .MuiDataGrid-toolbarContainer': {
+              padding: '8px',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            },
+          }}
         />
-      </StyledBox>
-    </div>
+      </StyledDataGridContainer>
+    </Box>
   );
-}
+} 
