@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -67,39 +67,28 @@ interface InputData {
   totalsByLocationType: Record<string, number[]>;
 }
 
+interface ExportProps {
+  data: InputData;
+  startDate: string;
+}
+
 // Constants
 const INITIAL_FILES: FileData[] = [
   { id: '1', name: 'events', format: 'csv' },
   { id: '2', name: 'location_summary', format: 'xlsx' }
 ];
 
-const SAMPLE_DATA: InputData = {
-  assetNames: {},
-  Colors: {},
-  Events: [
-    { id: 1, name: 'Event 1', type: 'meeting', date: '2024-01-15', participants: 10 },
-    { id: 2, name: 'Event 2', type: 'workshop', date: '2024-01-16', participants: 25 },
-    { id: 3, name: 'Event 3', type: 'conference', date: '2024-01-17', participants: 50 }
-  ],
-  totalsByLocationType: {
-    'office_a': [10, 15, 20, 18, 22, 16, 19],
-    'office_b': [8, 12, 14, 16, 11, 13, 15],
-    'warehouse': [25, 30, 28, 32, 27, 29, 31]
-  }
-};
-
 const MIME_TYPES = {
   csv: 'text/csv',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 } as const;
 
-const Export: React.FC = () => {
+const Export: React.FC<ExportProps> = ({ data, startDate }) => {
   // State
   const [files, setFiles] = useState<FileData[]>(INITIAL_FILES);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
   const [exportStatus, setExportStatus] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
 
   // Utility Functions
@@ -135,12 +124,12 @@ const Export: React.FC = () => {
     saveAs(blob, fileName);
   };
 
-  const processData = (data: InputData, startDate: string): ProcessedData => {
+  const processData = (inputData: InputData, startDate: string): ProcessedData => {
     const baseDate = new Date(startDate);
     
     const locationSheets: Record<string, LocationData[]> = {};
     
-    Object.entries(data.totalsByLocationType).forEach(([location, values]) => {
+    Object.entries(inputData.totalsByLocationType).forEach(([location, values]) => {
       locationSheets[location] = values.map((value, index) => {
         const currentDate = new Date(baseDate);
         currentDate.setDate(baseDate.getDate() + index);
@@ -155,7 +144,7 @@ const Export: React.FC = () => {
     });
 
     return {
-      events: [...data.Events],
+      events: [...inputData.Events],
       locationSheets
     };
   };
@@ -208,7 +197,7 @@ const Export: React.FC = () => {
   // Event Handlers
   const handleProcessData = (): void => {
     try {
-      const processed = processData(SAMPLE_DATA, startDate);
+      const processed = processData(data, startDate);
       setProcessedData(processed);
       setFiles(generateFiles(processed));
       setExportStatus('Data processed successfully! Files are ready for download.');
@@ -303,6 +292,13 @@ const Export: React.FC = () => {
     return format === 'xlsx' ? <ExcelIcon /> : <CsvIcon />;
   };
 
+  // Auto-process data when component mounts or data changes
+  useEffect(() => {
+    if (data && data.Events && data.totalsByLocationType) {
+      handleProcessData();
+    }
+  }, [data, startDate]);
+
   return (
     <Box className="export-container">
       <Paper elevation={2} className="export-paper">
@@ -315,7 +311,7 @@ const Export: React.FC = () => {
         </Box>
         
         <Typography variant="body1" color="text.secondary" className="export-description">
-          Process your data and download individual files in your preferred format, or get everything in one convenient zip archive.
+          Download individual files in your preferred format, or get everything in one convenient zip archive.
         </Typography>
 
         {/* Data Processing Section */}
@@ -328,8 +324,8 @@ const Export: React.FC = () => {
               label="Start Date"
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
+              InputProps={{ readOnly: true }}
               size="small"
             />
             <Button
@@ -341,7 +337,7 @@ const Export: React.FC = () => {
             </Button>
           </Box>
           <Typography variant="body2" color="text.secondary">
-            Set the start date for location data and process your data to generate downloadable files.
+            Start date for location data processing. Data will be automatically processed when changed.
           </Typography>
         </Paper>
 
