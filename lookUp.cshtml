@@ -1,182 +1,28 @@
-@{
-    // Demo data (id, text)
-    var items = new List<(string Id, string Text)> {
-        ("1","Alabama"),("2","Alaska"),("3","Arizona"),("4","Arkansas"),
-        ("5","California"),("6","Colorado"),("7","Connecticut")
-    };
+<form method="post" asp-action="Save">
+  <div class="excel-filter" data-visible-only="true">
+    <div class="ef-header">
+      <div class="ef-title">Filter Items</div>
+      <input class="ef-search" type="text" placeholder="Search items…" aria-label="Search items" />
+    </div>
 
-    // Preselected (optional)
-    var selectedIds = new[] { "3", "6" };
-}
+    <div class="ef-actions">
+      <a class="ef-link" href="#" role="button" data-action="select-all">Select all</a>
+      <span class="ef-sep">•</span>
+      <a class="ef-link" href="#" role="button" data-action="clear">Clear</a>
+    </div>
 
-<div class="excel-filter">
-  <div class="ef-header">
-    <div class="ef-title">Filter Items</div>
-    <input class="ef-search" type="text" placeholder="Search items…" aria-label="Search items" />
+    <div class="ef-list" role="group" aria-label="Filter options">
+      @foreach (var item in CurrentState.Locations) {
+        <label class="ef-option">
+          <input type="checkbox" name="SelectedIds" value="@item" />
+          <span class="ef-check"></span>
+          <span class="ef-text">@item</span>
+        </label>
+      }
+    </div>
+
+    <div class="ef-footer">
+      <button type="submit" class="ef-btn">Apply</button>
+    </div>
   </div>
-
-  <div class="ef-actions">
-    <a class="ef-link" href="#" role="button">Select all</a>
-    <span class="ef-sep">•</span>
-    <a class="ef-link" href="#" role="button">Clear</a>
-  </div>
-
-  <div class="ef-list" role="group" aria-label="Filter options">
-    @foreach (var it in items)
-    {
-      var isChecked = selectedIds.Contains(it.Id);
-      <label class="ef-option">
-        <input type="checkbox" name="SelectedIds" value="@it.Id" @(isChecked ? "checked" : "") />
-        <span class="ef-check"></span>
-        <span class="ef-text">@it.Text</span>
-      </label>
-    }
-  </div>
-
-  <div class="ef-footer">
-    <button type="submit" class="ef-btn">Apply</button>
-  </div>
-</div>
-
-<style>
-/* ----- Shell ----- */
-.excel-filter{
-  --ef-bg:#fff;
-  --ef-border:#e5e7eb;
-  --ef-hover:#f3f4f6;
-  --ef-text:#111827;
-  --ef-muted:#6b7280;
-  --ef-brand:#2563eb;
-  --ef-shadow: 0 6px 18px rgba(0,0,0,.08);
-  background:var(--ef-bg);
-  border:1px solid var(--ef-border);
-  border-radius:14px;
-  box-shadow:var(--ef-shadow);
-  max-width:420px;
-  width:100%;
-  overflow:hidden;
-  font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-}
-
-/* ----- Header ----- */
-.ef-header{
-  display:flex;
-  gap:.75rem;
-  align-items:center;
-  padding:14px 16px 10px;
-  border-bottom:1px solid var(--ef-border);
-}
-.ef-title{
-  font-weight:600;
-  color:var(--ef-text);
-  flex:0 0 auto;
-}
-.ef-search{
-  flex:1 1 auto;
-  border:1px solid var(--ef-border);
-  border-radius:10px;
-  padding:10px 12px;
-  outline:none;
-  font-size:14px;
-}
-.ef-search::placeholder{ color:var(--ef-muted); }
-
-/* ----- Actions (Select all / Clear) ----- */
-.ef-actions{
-  display:flex;
-  align-items:center;
-  gap:.5rem;
-  padding:8px 16px;
-  color:var(--ef-muted);
-  font-size:13px;
-}
-.ef-link{
-  text-decoration:none;
-  color:var(--ef-brand);
-  border-radius:8px;
-  padding:4px 6px;
-}
-.ef-link:hover{ background:var(--ef-hover); }
-.ef-sep{ color:#c4c7ce; }
-
-/* ----- List ----- */
-.ef-list{
-  max-height:280px;
-  overflow:auto;
-  padding:6px 8px 6px 6px;
-}
-.ef-option{
-  display:flex;
-  align-items:center;
-  gap:.6rem;
-  padding:8px 10px;
-  border-radius:10px;
-  cursor:pointer;
-  user-select:none;
-}
-.ef-option:hover{ background:var(--ef-hover); }
-
-/* Hide native checkbox, build custom one */
-.ef-option input[type="checkbox"]{
-  appearance:none;
-  -webkit-appearance:none;
-  position:absolute;
-  opacity:0;
-  pointer-events:none;
-}
-.ef-check{
-  width:18px; height:18px;
-  border:2px solid var(--ef-border);
-  border-radius:4px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  box-sizing:border-box;
-  flex:0 0 18px;
-  position:relative;
-  transition:all .15s ease;
-  background:#fff;
-}
-.ef-option input[type="checkbox"]:checked + .ef-check{
-  border-color:var(--ef-brand);
-  background:var(--ef-brand);
-}
-.ef-option input[type="checkbox"]:checked + .ef-check::after{
-  content:"";
-  width:10px; height:10px;
-  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="10" viewBox="0 0 12 10"><path fill="%23fff" d="M4.2 7.6L1.4 4.8 0 6.2 4.2 10 12 2.2 10.6.8z"/></svg>') center/contain no-repeat;
-  background:#fff;
-  display:block;
-}
-
-/* Text next to checkbox */
-.ef-text{
-  color:var(--ef-text);
-  font-size:14px;
-  line-height:1.2;
-}
-
-/* ----- Footer ----- */
-.ef-footer{
-  display:flex; justify-content:flex-end;
-  gap:.5rem;
-  padding:12px 16px 16px;
-  border-top:1px solid var(--ef-border);
-}
-.ef-btn{
-  background:var(--ef-brand);
-  color:#fff;
-  border:none;
-  border-radius:10px;
-  padding:10px 14px;
-  font-size:14px;
-  cursor:pointer;
-}
-.ef-btn:hover{ filter:brightness(0.95); }
-
-/* Nice scrollbars (webkit) */
-.ef-list::-webkit-scrollbar{ width:10px; }
-.ef-list::-webkit-scrollbar-thumb{
-  background:#d1d5db; border-radius:10px; border:2px solid #f8fafc;
-}
-</style>
+</form>
