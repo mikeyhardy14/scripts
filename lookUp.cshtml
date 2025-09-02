@@ -1,0 +1,51 @@
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+/* Tighten it a bit inside Bootstrap forms */
+.select2-container .select2-selection--multiple { min-height: 38px; }
+</style>
+
+@{
+    var items = new List<(int Id, string Text)> {
+        (1, "Alabama"), (2, "Alaska"), (3, "Arizona"), (4, "Arkansas"),
+        (5, "California"), (6, "Colorado"), (7, "Connecticut")
+    };
+    var selectedIds = new[] { 3, 6 };
+}
+
+<div class="mb-2 d-flex gap-2">
+    <button type="button" id="btnAll"   class="btn btn-sm btn-outline-primary">Select all</button>
+    <button type="button" id="btnNone"  class="btn btn-sm btn-outline-secondary">Clear</button>
+</div>
+
+<select id="mySelect" name="MySelect" multiple class="form-control">
+@foreach (var it in items)
+{
+    <option value="@it.Id" @(selectedIds.Contains(it.Id) ? "selected" : "")>@it.Text</option>
+}
+</select>
+
+@section Scripts{
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(function () {
+  const $sel = $('#mySelect').select2({
+    width: '100%',
+    closeOnSelect: false,
+    placeholder: 'Filter values...',
+  });
+
+  // Select all
+  $('#btnAll').on('click', function() {
+    const values = [];
+    $('#mySelect option').each(function(){ values.push(this.value); });
+    $sel.val(values).trigger('change');
+  });
+
+  // Clear all
+  $('#btnNone').on('click', function() {
+    $sel.val(null).trigger('change');
+  });
+});
+</script>
+}
