@@ -1,12 +1,37 @@
-// excel-filter.js
-// Adds Excel-like behavior to the .excel-filter UI:
-// - Search-as-you-type
-// - Select all / Clear (affects visible items by default)
-// - Works with multiple widgets on the page
+/*!
+ * excel-filter.js (no hidden-field aggregation)
+ * - Search-as-you-type
+ * - Select all / Clear buttons (default: affect only VISIBLE rows)
+ * - Works with multiple .excel-filter blocks on a page
+ *
+ * HTML inside each .excel-filter:
+ *   <input class="ef-search" ...>
+ *   <div class="ef-actions">
+ *     <a data-action="select-all">Select all</a>
+ *     <a data-action="clear">Clear</a>
+ *   </div>
+ *   <div class="ef-list">
+ *     <label class="ef-option">
+ *       <input type="checkbox" name="SelectedIds" value="...">
+ *       <span class="ef-check"></span>
+ *       <span class="ef-text">Label</span>
+ *     </label>
+ *     ...
+ *   </div>
+ *
+ * Optional on .excel-filter:
+ *   data-visible-only="true|false"   // default true (affect only visible options)
+ */
 
 (function () {
-  const VISIBLE_ONLY = true; // set to false if you want actions to affect ALL items, not just filtered/visible ones
+  const ROOT_SEL = '.excel-filter';
+  const SEARCH_SEL = '.ef-search';
+  const ACTIONS_SEL = '.ef-actions';
+  const OPTION_SEL = '.ef-option';
+  const TEXT_SEL = '.ef-text';
+  const CHECKBOX_SEL = 'input[type="checkbox"]';
 
+  // ---------- utils ----------
   function debounce(fn, delay) {
     let t;
     return function (...args) {
@@ -15,36 +40,54 @@
     };
   }
 
-  function getOptionNodes(root) {
-    return Array.from(root.querySelectorAll('.ef-option'));
+  function getConfig(root) {
+    const attr = root.getAttribute('data-visible-only');
+    // default true if not specified
+    const visibleOnly = attr == null ? true : String(attr).toLowerCase() !== 'false';
+    return { visibleOnly };
   }
 
-  function getCheckbox(opt) {
-    return opt.querySelector('input[type="checkbox"]');
+  function options(root) {
+    return Array.from(root.querySelectorAll(OPTION_SEL));
+  }
+
+  function optionText(opt) {
+    return (opt.querySelector(TEXT_SEL)?.textContent || '').trim();
+  }
+
+  function setVisible(opt, show) {
+    opt.dataset._visible = show ? '1' : '0';
+    opt.style.display = show ? '' : 'none';
   }
 
   function isVisible(opt) {
-    // We track visibility via dataset + style set by filter()
     return opt.dataset._visible !== '0';
   }
 
+  function selectAllButton(root) {
+    return root.querySelector('[data-action="select-all"]') ||
+           root.querySelectorAll(`${ACTIONS_SEL} .ef-link`)[0] || null;
+  }
+
+  function clearButton(root) {
+    return root.querySelector('[data-action="clear"]') ||
+           root.querySelectorAll(`${ACTIONS_SEL} .ef-link`)[1] || null;
+  }
+
+  // ---------- behaviors ----------
   function filterList(root) {
-    const q = (root.querySelector('.ef-search')?.value || '').trim().toLowerCase();
-    const opts = getOptionNodes(root);
+    const q = (root.querySelector(SEARCH_SEL)?.value || '').trim().toLowerCase();
     let visibleCount = 0;
 
-    for (const opt of opts) {
-      const txt = (opt.querySelector('.ef-text')?.textContent || '').toLowerCase();
+    for (const opt of options(root)) {
+      const txt = optionText(opt).toLowerCase();
       const match = !q || txt.includes(q);
-      opt.style.display = match ? '' : 'none';
-      opt.dataset._visible = match ? '1' : '0';
+      setVisible(opt, match);
       if (match) visibleCount++;
     }
 
-    // Optional: disable action links if nothing visible
-    const selectAllBtn = getSelectAllBtn(root);
-    const clearBtn = getClearBtn(root);
-    [selectAllBtn, clearBtn].forEach(btn => {
+    // Toggle disabled style on action links when nothing is visible
+    [selectAllButton(root), clearButton(root)].forEach(btn => {
       if (!btn) return;
       if (visibleCount === 0) {
         btn.classList.add('is-disabled');
@@ -57,46 +100,28 @@
   }
 
   function toggleAll(root, checked) {
-    const opts = getOptionNodes(root);
-    for (const opt of opts) {
-      if (!VISIBLE_ONLY || isVisible(opt)) {
-        const cb = getCheckbox(opt);
-        if (cb) {
+    const { visibleOnly } = getConfig(root);
+    for (const opt of options(root)) {
+      if (!visibleOnly || isVisible(opt)) {
+        const cb = opt.querySelector(CHECKBOX_SEL);
+        if (cb && !cb.disabled) {
           cb.checked = checked;
-          // If you need reactive frameworks to notice:
+          // If something listens for changes:
           // cb.dispatchEvent(new Event('change', { bubbles: true }));
         }
       }
     }
   }
 
-  function getSelectAllBtn(root) {
-    // Prefer explicit data-action, else fall back to first .ef-link
-    return (
-      root.querySelector('[data-action="select-all"]') ||
-      root.querySelectorAll('.ef-actions .ef-link')[0] ||
-      null
-    );
-  }
-
-  function getClearBtn(root) {
-    // Prefer explicit data-action, else fall back to second .ef-link
-    return (
-      root.querySelector('[data-action="clear"]') ||
-      root.querySelectorAll('.ef-actions .ef-link')[1] ||
-      null
-    );
-  }
-
   function initOne(root) {
-    if (!root || root.__excelFilterInitialized) return;
-    root.__excelFilterInitialized = true;
+    if (!root || root.__excelFilterInit) return;
+    root.__excelFilterInit = true;
 
-    const search = root.querySelector('.ef-search');
-    const onSearch = debounce(() => filterList(root), 120);
+    // Search
+    const search = root.querySelector(SEARCH_SEL);
     if (search) {
-      search.addEventListener('input', onSearch);
-      // ESC clears search
+      const onInput = debounce(() => filterList(root), 120);
+      search.addEventListener('input', onInput);
       search.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
           search.value = '';
@@ -105,39 +130,40 @@
       });
     }
 
-    const selectAllBtn = getSelectAllBtn(root);
-    const clearBtn = getClearBtn(root);
+    // Actions
+    const btnAll = selectAllButton(root);
+    const btnClear = clearButton(root);
 
-    if (selectAllBtn) {
-      selectAllBtn.addEventListener('click', (e) => {
+    if (btnAll) {
+      btnAll.addEventListener('click', (e) => {
         e.preventDefault();
-        if (selectAllBtn.classList.contains('is-disabled')) return;
+        if (btnAll.classList.contains('is-disabled')) return;
         toggleAll(root, true);
       });
     }
-
-    if (clearBtn) {
-      clearBtn.addEventListener('click', (e) => {
+    if (btnClear) {
+      btnClear.addEventListener('click', (e) => {
         e.preventDefault();
-        if (clearBtn.classList.contains('is-disabled')) return;
+        if (btnClear.classList.contains('is-disabled')) return;
         toggleAll(root, false);
       });
     }
 
-    // Initial visibility state
+    // Initial render
     filterList(root);
   }
 
   function initAll() {
-    document.querySelectorAll('.excel-filter').forEach(initOne);
+    document.querySelectorAll(ROOT_SEL).forEach(initOne);
   }
 
+  // Auto-init
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initAll);
   } else {
     initAll();
   }
 
-  // Optional global access if you dynamically add panels:
-  window.ExcelFilter = { init: initAll, initOne };
+  // Public API (optional)
+  window.ExcelFilter = { init: initAll, initOne, filterList, toggleAll };
 })();
