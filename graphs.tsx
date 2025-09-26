@@ -5,7 +5,8 @@ import {
   Box, 
   Typography,
   CircularProgress,
-  Alert
+  Alert,
+  Paper
 } from '@mui/material';
 import Plot from 'react-plotly.js';
 
@@ -15,19 +16,6 @@ interface ApiData {
   };
 }
 
-interface PlotlyTrace {
-  x: string[];
-  y: number[];
-  type: 'scatter';
-  mode: 'lines+markers';
-  name: string;
-  line: {
-    width: 2;
-  };
-  marker: {
-    size: 6;
-  };
-}
 
 export default function Graphs() {
   const { name } = useParams<{ name: string }>();
@@ -100,7 +88,7 @@ export default function Graphs() {
     return mockData;
   };
 
-  const processDataForPlotly = (apiData: ApiData): PlotlyTrace[] => {
+  const processDataForPlotly = (apiData: ApiData) => {
     const placeData: { [place: string]: { dates: string[], values: number[] } } = {};
     
     // Group data by place
@@ -114,20 +102,25 @@ export default function Graphs() {
       });
     });
 
-    // Sort dates for each place and create traces
+    // Sort dates for each place and create chart data for each place
     return Object.entries(placeData).map(([place, { dates, values }]) => {
       // Combine dates and values, sort by date, then separate again
       const combined = dates.map((date, index) => ({ date, value: values[index] }));
       combined.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       
       return {
-        x: combined.map(item => item.date),
-        y: combined.map(item => item.value),
-        type: 'scatter' as const,
-        mode: 'lines+markers' as const,
-        name: place,
-        line: { width: 2 },
-        marker: { size: 6 }
+        place,
+        trace: {
+          x: combined.map(item => item.date),
+          y: combined.map(item => item.value),
+          type: 'scatter' as const,
+          mode: 'lines+markers' as const,
+          name: place,
+          line: { width: 3 },
+          marker: { size: 8 },
+          fill: 'tonexty' as const,
+          fillcolor: 'rgba(74, 144, 226, 0.1)'
+        }
       };
     });
   };
@@ -175,52 +168,57 @@ export default function Graphs() {
     );
   }
 
-  const traces = processDataForPlotly(data);
+  const chartData = processDataForPlotly(data);
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="xl">
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom align="center">
           Timeline Charts - {name}
         </Typography>
         
-        <Box sx={{ mt: 4, width: '100%', height: 600 }}>
-          <Plot
-            data={traces}
-            layout={{
-              title: {
-                text: `Timeline Data for ${name}`,
-                font: { size: 18 }
-              },
-              xaxis: {
-                title: { text: 'Date' },
-                type: 'date',
-                tickangle: -45
-              },
-              yaxis: {
-                title: { text: 'Value' }
-              },
-              hovermode: 'x unified',
-              showlegend: true,
-              legend: {
-                orientation: 'h',
-                y: -0.2
-              },
-              margin: {
-                l: 60,
-                r: 30,
-                t: 80,
-                b: 120
-              }
-            }}
-            style={{ width: '100%', height: '100%' }}
-            config={{
-              responsive: true,
-              displayModeBar: true,
-              modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-              displaylogo: false
-            }}
-          />
+        <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {chartData.map(({ place, trace }) => (
+            <Paper key={place} elevation={3} sx={{ p: 2, width: '100%' }}>
+              <Typography variant="h5" component="h2" gutterBottom align="center" sx={{ mb: 3 }}>
+                {place}
+              </Typography>
+              <Box sx={{ height: 400, width: '100%' }}>
+                <Plot
+                  data={[trace]}
+                  layout={{
+                    xaxis: {
+                      title: { text: 'Date', font: { size: 14 } },
+                      type: 'date',
+                      tickangle: -45,
+                      tickfont: { size: 12 }
+                    },
+                    yaxis: {
+                      title: { text: 'Value', font: { size: 14 } },
+                      tickfont: { size: 12 }
+                    },
+                    hovermode: 'x unified',
+                    showlegend: false,
+                    margin: {
+                      l: 60,
+                      r: 30,
+                      t: 20,
+                      b: 80
+                    },
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    paper_bgcolor: 'rgba(0,0,0,0)'
+                  }}
+                  style={{ width: '100%', height: '100%' }}
+                  config={{
+                    responsive: true,
+                    displayModeBar: true,
+                    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+                    displaylogo: false
+                  }}
+                />
+              </Box>
+            </Paper>
+          ))}
         </Box>
       </Box>
     </Container>
